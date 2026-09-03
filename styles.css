@@ -43,6 +43,12 @@ h2, h3 {
     margin-bottom: 15px;
 }
 
+label {
+    font-weight: bold;
+    font-size: 13px;
+    color: #495057;
+}
+
 input, select, button {
     width: 100%;
     padding: 12px;
@@ -94,6 +100,13 @@ button:hover {
     display: flex;
     gap: 10px;
     margin: 15px 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 table {
