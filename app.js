@@ -1,11 +1,12 @@
-// --- 1. إعدادات السحابة Firebase ---
+// --- 1. إعدادات السحابة Firebase الخاص بمشروعك ---
 const firebaseConfig = {
-    apiKey: "ضع_هنا_apiKey_الخاص_بك",
-    authDomain: "ضع_هنا_authDomain",
-    projectId: "ضع_هنا_projectId",
-    storageBucket: "ضع_هنا_storageBucket",
-    messagingSenderId: "ضع_هنا_messagingSenderId",
-    appId: "ضع_هنا_appId"
+    apiKey: "AIzaSyCqERoBLSxpk_FTvTepbyTQd6C2aT9vNts",
+    authDomain: "dawamibps.firebaseapp.com",
+    projectId: "dawamibps",
+    storageBucket: "dawamibps.firebasestorage.app",
+    messagingSenderId: "949392669004",
+    appId: "1:949392669004:web:89b8c65e631662c6d2b7e9",
+    measurementId: "G-ZMECR36J4S"
 };
 
 // تهيئة Firebase
@@ -20,7 +21,6 @@ window.onload = function() {
 };
 
 async function initApp() {
-    // جلب الإعدادات الأولية من السحابة
     try {
         const doc = await db.collection('settings').doc('company').get();
         if (doc.exists) {
@@ -54,7 +54,7 @@ async function verifyCompanyCode() {
             errorElem.innerText = "❌ كود الشركة غير صحيح! يرجى التأكد وإعادة المحاولة.";
         }
     } catch(err) {
-        errorElem.innerText = "حدث خطأ في الاتصال بقاعدة البيانات. تأكد من إعدادات Firebase.";
+        errorElem.innerText = "حدث خطأ في الاتصال بقاعدة البيانات. تأكد من تفعيل Firestore Database.";
     }
 }
 
@@ -249,7 +249,6 @@ async function loadAdminData() {
         document.getElementById('settingRadius').value = s.radiusMeters || "";
     }
 
-    // جلب قائمة الموظفين
     const empSnap = await db.collection('employees').get();
     const select = document.getElementById('pdfEmpSelect');
     select.innerHTML = `<option value="ALL">جميع الموظفين</option>`;
@@ -258,7 +257,6 @@ async function loadAdminData() {
         select.innerHTML += `<option value="${d.id}">${emp.fullName} (${emp.jobTitle})</option>`;
     });
 
-    // استماع مباشر لسجلات جميع الهواتف
     db.collection('attendance').onSnapshot(snapshot => {
         const tbody = document.getElementById('attendanceTableBody');
         tbody.innerHTML = "";
