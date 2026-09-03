@@ -24,14 +24,57 @@
             <th>كود الدخول</th>
             <th>رقم الهوية</th>
             <th>رقم الهاتف</th>
+            <th>المبلغ</th>
+            <th>النسبة</th>
             <th>حالة الدوام</th>
             <th>مدة الاستراحة</th>
+            <th class="no-print">إجراءات</th>
           </tr>
         </thead>
         <tbody id="employeeTableBody">
         </tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- نافذة (Modal) تعديل بيانات الموظف -->
+<div id="editModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <h3>تعديل بيانات الموظف</h3>
+    <form id="editForm" onsubmit="event.preventDefault(); saveEmployeeChanges();">
+      <input type="hidden" id="editCode">
+      
+      <div class="form-group">
+        <label>اسم الموظف:</label>
+        <input type="text" id="editName" required>
+      </div>
+
+      <div class="form-group">
+        <label>رقم الهوية:</label>
+        <input type="text" id="editNationalId">
+      </div>
+
+      <div class="form-group">
+        <label>رقم الهاتف:</label>
+        <input type="text" id="editPhone">
+      </div>
+
+      <div class="form-group">
+        <label>المبلغ:</label>
+        <input type="text" id="editSalary">
+      </div>
+
+      <div class="form-group">
+        <label>النسبة:</label>
+        <input type="text" id="editRate">
+      </div>
+
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-save">حفظ التغييرات</button>
+        <button type="button" class="btn btn-cancel" onclick="closeEditModal()">إلغاء</button>
+      </div>
+    </form>
   </div>
 </div>
 
