@@ -3,88 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>دوامي - تسجيل الموظف</title>
+  <title>نظام دوامي - تسجيل الدخول والدوام</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
-  <!-- شاشة الدخول عبر الكود -->
-  <div id="loginSection" class="card login-card">
-    <h2>تسجيل الدخول - دوامي</h2>
-    <p class="subtitle">أدخل كود الموظف للدخول المباشر</p>
+  <!-- شاشة تسجيل الدخول -->
+  <div id="loginSection" class="card">
+    <h2>تسجيل دخول الموظف</h2>
+    <p class="subtitle">أدخل الكود الخاص بك للدخول إلى نظام الدوام</p>
     
-    <input type="text" id="employeeCodeInput" placeholder="أدخل كودك الخاص (مثال: 1001)" class="form-input">
-    <button class="btn btn-primary btn-full" onclick="loginWithCode()">دخول</button>
-    
-    <p id="loginError" class="error-msg"></p>
+    <div class="form-group">
+      <label for="employeeCodeInput">كود الموظف:</label>
+      <input type="text" id="employeeCodeInput" placeholder="أدخل الكود (مثال: 1001)" autocomplete="off">
+    </div>
+
+    <div id="loginError" class="error-msg" style="display: none;"></div>
+
+    <button class="btn btn-primary" onclick="loginWithCode()">تسجيل الدخول</button>
   </div>
 
-  <!-- لوحة الموظف بعد الدخول -->
+  <!-- لوحة الموظف الرئيسية -->
   <div id="dashboardSection" class="card" style="display: none;">
     <div class="header-flex">
-      <h2>مواظبة الدوام اليومي</h2>
-      <button class="btn btn-logout no-print" onclick="logout()">تسجيل الخروج</button>
-    </div>
-    
-    <p class="user-greeting">أهلاً بك، <strong id="employeeName"></strong> (كود: <span id="employeeCodeDisplay"></span>)</p>
-    <hr class="divider">
-
-    <div class="actions-flex">
-      <button id="breakBtn" class="btn btn-break" onclick="toggleBreak()">بدء الاستراحة (Break)</button>
-      <button class="btn btn-print no-print" onclick="window.print()">طباعة تقرير اليوم</button>
+      <div>
+        <h2>أهلاً بك، <span id="employeeName"></span></h2>
+        <p class="subtitle">كود الموظف: <code id="employeeCodeDisplay"></code></p>
+      </div>
+      <button class="btn btn-logout" onclick="logout()">تسجيل الخروج</button>
     </div>
 
-    <div id="statusBox" class="status-box">
-      <p>حالة الدوام: <strong id="currentStatus" class="txt-success">على رأس العمل</strong></p>
-      <p id="breakLog">وقت الاستراحة المسجل: لا يوجد</p>
-    </div>
-  </div>
-</div>
-
-<script src="script.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>دوامي - لوحة إشراف المدير</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-<div class="container">
-  <div class="card">
-    <div class="header-flex no-print">
-      <h2>سجل بيانات وحضور الموظفين</h2>
-      <button class="btn btn-print" onclick="window.print()">طباعة تقرير الموظفين</button>
+    <div class="status-box">
+      <p>حالة الدوام الحالية: <strong id="currentStatus">على رأس العمل</strong></p>
+      <p id="breakLog" class="break-log-text"></p>
     </div>
 
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>اسم الموظف</th>
-            <th>كود الدخول</th>
-            <th>رقم الهوية</th>
-            <th>رقم الهاتف</th>
-            <th>حالة الدوام</th>
-            <th>مدة الاستراحة</th>
-          </tr>
-        </thead>
-        <tbody id="employeeTableBody">
-        </tbody>
-      </table>
+    <div class="actions">
+      <button id="breakBtn" class="btn btn-warning" onclick="toggleBreak()">بدء الاستراحة (Break)</button>
     </div>
   </div>
 </div>
 
 <script src="script.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', loadAdminData);
-</script>
 </body>
 </html>
-
