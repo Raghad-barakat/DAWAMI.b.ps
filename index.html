@@ -9,34 +9,34 @@
 <body>
 
 <div class="container">
-  <!-- شاشة تسجيل الدخول للكود -->
-  <div id="loginSection" class="card" style="max-width: 400px; margin: 40px auto; text-align: center;">
+  <!-- شاشة الدخول عبر الكود -->
+  <div id="loginSection" class="card login-card">
     <h2>تسجيل الدخول - دوامي</h2>
-    <p style="margin-bottom: 15px; color: #64748b;">أدخل الكود الخاص بك للمتابعة</p>
+    <p class="subtitle">أدخل كود الموظف للدخول المباشر</p>
     
-    <input type="text" id="employeeCodeInput" placeholder="أدخل كود الموظف (مثال: 1001)" class="form-input">
-    <button class="btn btn-primary" onclick="loginWithCode()" style="width: 100%; margin-top: 10px;">دخول</button>
+    <input type="text" id="employeeCodeInput" placeholder="أدخل كودك الخاص (مثال: 1001)" class="form-input">
+    <button class="btn btn-primary btn-full" onclick="loginWithCode()">دخول</button>
     
-    <p id="loginError" style="color: var(--danger-color); font-size: 0.85rem; margin-top: 10px; display: none;"></p>
+    <p id="loginError" class="error-msg"></p>
   </div>
 
-  <!-- لوحة الموظف الرئيسية (تظهر بعد الدخول وتتذكر الموظف) -->
+  <!-- لوحة الموظف بعد الدخول -->
   <div id="dashboardSection" class="card" style="display: none;">
-    <div style="display: flex; justify-content: space-between; align-align: center;">
+    <div class="header-flex">
       <h2>مواظبة الدوام اليومي</h2>
       <button class="btn btn-logout no-print" onclick="logout()">تسجيل الخروج</button>
     </div>
     
-    <p style="margin-top: 10px;">أهلاً بك، <strong id="employeeName"></strong></p>
-    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e2e8f0;">
+    <p class="user-greeting">أهلاً بك، <strong id="employeeName"></strong> (كود: <span id="employeeCodeDisplay"></span>)</p>
+    <hr class="divider">
 
-    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+    <div class="actions-flex">
       <button id="breakBtn" class="btn btn-break" onclick="toggleBreak()">بدء الاستراحة (Break)</button>
       <button class="btn btn-print no-print" onclick="window.print()">طباعة تقرير اليوم</button>
     </div>
 
-    <div id="statusBox" style="padding: 12px; background: #f1f5f9; border-radius: 8px;">
-      <p>حالة الدوام: <strong id="currentStatus" style="color: var(--success-color);">على رأس العمل</strong></p>
+    <div id="statusBox" class="status-box">
+      <p>حالة الدوام: <strong id="currentStatus" class="txt-success">على رأس العمل</strong></p>
       <p id="breakLog">وقت الاستراحة المسجل: لا يوجد</p>
     </div>
   </div>
