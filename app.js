@@ -1,522 +1,422 @@
-```javascript
 /* =========================================================
-   DAWAMI - FIREBASE CONFIG
-========================================================= */
+   DAWAMI - Employee Attendance System
+   Firebase Firestore
+   ========================================================= */
+
+/* =========================
+   FIREBASE CONFIG
+   ========================= */
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCqERoBLSxpk_FTvTepbyTQd6C2aT9vNts",
-    authDomain: "dawamibps.firebaseapp.com",
-    projectId: "dawamibps",
-    storageBucket: "dawamibps.firebasestorage.app",
-    messagingSenderId: "949392669004",
-    appId: "1:949392669004:web:89b8c65e631662c6d2b7e9",
-    measurementId: "G-ZMECR36J4S"
+    apiKey: "PUT_YOUR_API_KEY_HERE",
+    authDomain: "PUT_YOUR_PROJECT.firebaseapp.com",
+    projectId: "PUT_YOUR_PROJECT_ID_HERE",
+    storageBucket: "PUT_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "PUT_YOUR_MESSAGING_SENDER_ID_HERE",
+    appId: "PUT_YOUR_APP_ID_HERE"
 };
-
-
-/* =========================================================
-   FIREBASE INIT
-========================================================= */
 
 firebase.initializeApp(firebaseConfig);
 
 const db = firebase.firestore();
 
-
-/* =========================================================
+/* =========================
    GLOBAL STATE
-========================================================= */
+   ========================= */
 
-let currentEmployee =
-    JSON.parse(
-        localStorage.getItem("dawami_current_user")
-    ) || null;
-
-
-let cachedSettings = {
-    companyCode: "COMP123",
-    adminPassword: "admin",
-    lat: 31.9539,
-    lng: 35.9106,
-    radiusMeters: 100
-};
-
-
-let attendanceLogs = [];
+let companySettings = null;
+let currentEmployee = null;
+let currentEmployeeId = null;
+let isAdmin = false;
 
 let employeesCache = [];
+let attendanceCache = [];
 
-let unsubscribeAttendance = null;
+/* =========================
+   DOM HELPERS
+   ========================= */
 
+const $ = (id) => document.getElementById(id);
 
-/* =========================================================
-   INIT
-========================================================= */
+function showElement(id) {
+    const el = $(id);
+    if (el) el.style.display = "";
+}
 
-window.addEventListener("load", initApp);
+function hideElement(id) {
+    const el = $(id);
+    if (el) el.style.display = "none";
+}
 
+function setText(id, value) {
+    const el = $(id);
+    if (el) el.textContent = value ?? "";
+}
 
-async function initApp() {
+function setValue(id, value) {
+    const el = $(id);
+    if (el) el.value = value ?? "";
+}
 
-    try {
+function getValue(id) {
+    const el = $(id);
+    return el ? el.value.trim() : "";
+}
 
-        const doc =
-            await db
-                .collection("settings")
-                .doc("company")
-                .get();
+function showMessage(message, type = "info") {
+    alert(message);
+}
 
+/* =========================
+   DATE / TIME HELPERS
+   ========================= */
 
-        if (doc.exists) {
+function pad(number) {
+    return String(number).padStart(2, "0");
+}
 
-            cachedSettings = {
-                ...cachedSettings,
-                ...doc.data()
-            };
-
-        } else {
-
-            await db
-                .collection("settings")
-                .doc("company")
-                .set(cachedSettings);
-
-        }
-
-    } catch (error) {
-
-        console.error(error);
-
-        showToast(
-            "تعذر الاتصال بقاعدة البيانات",
-            "error"
-        );
+function formatDate(date) {
+    if (!(date instanceof Date)) {
+        date = new Date(date);
     }
 
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
-    updateAdminDate();
-
-
-    if (currentEmployee) {
-
-        showEmployeeDashboard();
-
-    } else {
-
-        showCompanyCodeSection();
-
+function formatTime(date) {
+    if (!(date instanceof Date)) {
+        date = new Date(date);
     }
+
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function formatDateTime(date) {
+    if (!(date instanceof Date)) {
+        date = new Date(date);
+    }
 
-/* =========================================================
-   UI NAVIGATION
-========================================================= */
-
-function hideAllScreens() {
-
-    const ids = [
-        "companyCodeSection",
-        "employeeRegistrationSection",
-        "employeeDashboard",
-        "adminLoginSection",
-        "adminDashboard"
-    ];
-
-
-    ids.forEach(id => {
-
-        const element =
-            document.getElementById(id);
-
-        if (element) {
-
-            element.classList.add("hidden");
-
-        }
-
-    });
+    return `${formatDate(date)} ${formatTime(date)}`;
 }
 
-
-function showCompanyCodeSection() {
-
-    hideAllScreens();
-
-    document
-        .getElementById("companyCodeSection")
-        .classList.remove("hidden");
+function startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
 }
 
-
-function showAdminLogin() {
-
-    hideAllScreens();
-
-    document
-        .getElementById("adminLoginSection")
-        .classList.remove("hidden");
-
-    setTimeout(() => {
-
-        document
-            .getElementById("adminPasswordInput")
-            ?.focus();
-
-    }, 100);
+function endOfToday() {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d;
 }
 
+function startOfMonth() {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
 
-/* =========================================================
-   COMPANY CODE
-========================================================= */
+function endOfMonth() {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    d.setDate(0);
+    d.setHours(23, 59, 59, 999);
+    return d;
+}
+
+/* =========================
+   HOURS CALCULATION
+   ========================= */
+
+function millisecondsToHours(ms) {
+    if (!ms || ms < 0) return 0;
+    return ms / (1000 * 60 * 60);
+}
+
+function millisecondsToMinutes(ms) {
+    if (!ms || ms < 0) return 0;
+    return Math.floor(ms / (1000 * 60));
+}
+
+function formatHours(hours) {
+    hours = Number(hours) || 0;
+
+    const totalMinutes = Math.round(hours * 60);
+
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+
+    return `${h} ساعة ${m} دقيقة`;
+}
+
+function formatDecimalHours(hours) {
+    return `${(Number(hours) || 0).toFixed(2)} ساعة`;
+}
+
+/* =========================
+   EMPLOYEE LOGIN
+   ========================= */
 
 async function verifyCompanyCode() {
 
-    const input =
-        document
-            .getElementById("companyCodeInput")
-            .value
-            .trim()
-            .toUpperCase();
+    const code = getValue("companyCodeInput");
 
-
-    const error =
-        document.getElementById("codeError");
-
-
-    if (!input) {
-
-        error.innerText =
-            "يرجى إدخال كود الشركة.";
-
+    if (!code) {
+        showMessage("أدخل كود الشركة");
         return;
     }
 
-
     try {
 
-        const doc =
-            await db
-                .collection("settings")
-                .doc("company")
-                .get();
+        const snapshot = await db
+            .collection("company")
+            .doc("settings")
+            .get();
 
-
-        const settings =
-            doc.exists
-                ? {
-                    ...cachedSettings,
-                    ...doc.data()
-                }
-                : cachedSettings;
-
-
-        if (
-            input ===
-            String(
-                settings.companyCode || "COMP123"
-            )
-                .trim()
-                .toUpperCase()
-        ) {
-
-            error.innerText = "";
-
-            document
-                .getElementById("companyCodeSection")
-                .classList.add("hidden");
-
-
-            document
-                .getElementById("employeeRegistrationSection")
-                .classList.remove("hidden");
-
-        } else {
-
-            error.innerText =
-                "❌ كود الشركة غير صحيح. تأكد من الكود وحاول مرة أخرى.";
+        if (!snapshot.exists) {
+            showMessage("لم يتم إعداد الشركة بعد.");
+            return;
         }
 
+        companySettings = snapshot.data();
+
+        if (String(companySettings.companyCode) !== String(code)) {
+            showMessage("كود الشركة غير صحيح.");
+            return;
+        }
+
+        localStorage.setItem("dawami_company_verified", "true");
+
+        showElement("employeeRegisterSection");
+        hideElement("companyCodeSection");
 
     } catch (error) {
 
         console.error(error);
 
-        error.innerText =
-            "تعذر الاتصال بقاعدة البيانات.";
+        showMessage("حدث خطأ أثناء الاتصال بقاعدة البيانات.");
     }
 }
 
-
-/* =========================================================
+/* =========================
    EMPLOYEE REGISTRATION
-========================================================= */
+   ========================= */
 
 async function saveEmployeeProfile(event) {
 
     event.preventDefault();
 
+    const fullName = getValue("empFullName");
+    const nationalId = getValue("empNationalId");
+    const phone = getValue("empPhone");
+    const jobTitle = getValue("empJobTitle");
 
-    const fullName =
-        document
-            .getElementById("empFullName")
-            .value
-            .trim();
-
-
-    const nationalId =
-        document
-            .getElementById("empNationalId")
-            .value
-            .trim();
-
-
-    const phone =
-        document
-            .getElementById("empPhone")
-            .value
-            .trim();
-
-
-    const jobTitle =
-        document
-            .getElementById("empJobTitle")
-            .value
-            .trim();
-
-
-    if (
-        !fullName ||
-        !nationalId ||
-        !phone ||
-        !jobTitle
-    ) {
-
-        showToast(
-            "يرجى تعبئة جميع البيانات",
-            "warning"
-        );
-
+    if (!fullName || !nationalId || !phone || !jobTitle) {
+        showMessage("يرجى تعبئة جميع البيانات.");
         return;
     }
 
-
     try {
 
-        const snapshot =
-            await db
-                .collection("employees")
-                .where(
-                    "nationalId",
-                    "==",
-                    nationalId
-                )
-                .get();
-
+        const existing = await db
+            .collection("employees")
+            .where("nationalId", "==", nationalId)
+            .limit(1)
+            .get();
 
         let employeeId;
 
-        const employeeData = {
+        if (!existing.empty) {
 
-            fullName,
-
-            nationalId,
-
-            phone,
-
-            jobTitle,
-
-            updatedAt:
-                firebase.firestore.FieldValue.serverTimestamp()
-
-        };
-
-
-        if (!snapshot.empty) {
-
-            employeeId =
-                snapshot.docs[0].id;
-
+            employeeId = existing.docs[0].id;
 
             await db
                 .collection("employees")
                 .doc(employeeId)
-                .update(employeeData);
+                .update({
+                    fullName,
+                    phone,
+                    jobTitle,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
         } else {
 
-            const ref =
-                await db
-                    .collection("employees")
-                    .add({
+            const employeeRef = await db.collection("employees").add({
 
-                        ...employeeData,
+                fullName,
+                nationalId,
+                phone,
+                jobTitle,
 
-                        createdAt:
-                            firebase.firestore.FieldValue.serverTimestamp()
+                active: true,
 
-                    });
+                createdAt:
+                    firebase.firestore.FieldValue.serverTimestamp()
 
+            });
 
-            employeeId = ref.id;
-
+            employeeId = employeeRef.id;
         }
 
+        currentEmployeeId = employeeId;
+
+        const employeeDoc = await db
+            .collection("employees")
+            .doc(employeeId)
+            .get();
 
         currentEmployee = {
-
             id: employeeId,
-
-            fullName,
-
-            nationalId,
-
-            phone,
-
-            jobTitle
-
+            ...employeeDoc.data()
         };
 
-
         localStorage.setItem(
-            "dawami_current_user",
-            JSON.stringify(currentEmployee)
+            "dawami_employee_id",
+            employeeId
         );
 
-
-        showToast(
-            "تم حفظ بياناتك بنجاح",
-            "success"
-        );
-
-
-        setTimeout(
-            showEmployeeDashboard,
-            400
-        );
-
+        openEmployeeDashboard();
 
     } catch (error) {
 
         console.error(error);
 
-        showToast(
-            "حدث خطأ أثناء حفظ البيانات",
-            "error"
-        );
+        showMessage("تعذر حفظ بيانات الموظف.");
     }
 }
 
-
-/* =========================================================
+/* =========================
    EMPLOYEE DASHBOARD
-========================================================= */
+   ========================= */
 
-function showEmployeeDashboard() {
+async function openEmployeeDashboard() {
 
-    hideAllScreens();
+    hideElement("companyCodeSection");
+    hideElement("employeeRegisterSection");
+    hideElement("adminLoginSection");
 
+    showElement("employeeDashboard");
 
-    document
-        .getElementById("employeeDashboard")
-        .classList.remove("hidden");
+    if (!currentEmployee) return;
 
-
-    document
-        .getElementById("welcomeEmpName")
-        .innerText =
-        currentEmployee?.fullName || "الموظف";
-
-
-    document
-        .getElementById("welcomeEmpTitle")
-        .innerText =
-        currentEmployee?.jobTitle || "موظف";
-
-
-    const initial =
-        currentEmployee?.fullName
-            ? currentEmployee.fullName.charAt(0)
-            : "د";
-
-
-    document
-        .getElementById("employeeInitial")
-        .innerText = initial;
-
-
-    updateTodayAttendance();
-
-
-    checkEmployeeLocation();
-}
-
-
-/* =========================================================
-   DATE HELPERS
-========================================================= */
-
-function getLocalDateString(date = new Date()) {
-
-    const year =
-        date.getFullYear();
-
-
-    const month =
-        String(
-            date.getMonth() + 1
-        ).padStart(2, "0");
-
-
-    const day =
-        String(
-            date.getDate()
-        ).padStart(2, "0");
-
-
-    return `${year}-${month}-${day}`;
-}
-
-
-function getLocalTimeString(date = new Date()) {
-
-    return date.toLocaleTimeString(
-        "ar-PS",
-        {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        }
+    setText(
+        "welcomeEmpName",
+        `مرحباً ${currentEmployee.fullName}`
     );
+
+    setText(
+        "welcomeEmpTitle",
+        currentEmployee.jobTitle || "موظف"
+    );
+
+    await updateEmployeeDashboard();
 }
 
+async function updateEmployeeDashboard() {
 
-function formatDateArabic(dateString) {
+    if (!currentEmployeeId) return;
 
-    if (!dateString) return "--";
+    const today = formatDate(new Date());
 
+    const snapshot = await db
+        .collection("attendance")
+        .where("employeeId", "==", currentEmployeeId)
+        .get();
 
-    const date =
-        new Date(
-            `${dateString}T00:00:00`
+    let todayRecord = null;
+
+    snapshot.forEach(doc => {
+
+        const data = doc.data();
+
+        if (data.date === today) {
+            todayRecord = {
+                id: doc.id,
+                ...data
+            };
+        }
+    });
+
+    const locationStatus = $("locationStatus");
+
+    if (todayRecord) {
+
+        if (todayRecord.clockIn && !todayRecord.clockOut) {
+
+            setText(
+                "locationStatus",
+                `تم تسجيل الدخول الساعة ${todayRecord.clockIn}`
+            );
+
+            const btnIn = $("btnClockIn");
+            const btnOut = $("btnClockOut");
+
+            if (btnIn) btnIn.disabled = true;
+            if (btnOut) btnOut.disabled = false;
+
+        } else if (todayRecord.clockOut) {
+
+            setText(
+                "locationStatus",
+                `تم إنهاء الدوام الساعة ${todayRecord.clockOut}`
+            );
+
+            const btnIn = $("btnClockIn");
+            const btnOut = $("btnClockOut");
+
+            if (btnIn) btnIn.disabled = true;
+            if (btnOut) btnOut.disabled = true;
+        }
+
+    } else {
+
+        setText(
+            "locationStatus",
+            "لم يتم تسجيل الدخول اليوم"
         );
 
+        const btnIn = $("btnClockIn");
+        const btnOut = $("btnClockOut");
 
-    return date.toLocaleDateString(
-        "ar-PS",
-        {
-            year: "numeric",
-            month: "long",
-            day: "numeric"
-        }
-    );
+        if (btnIn) btnIn.disabled = false;
+        if (btnOut) btnOut.disabled = true;
+    }
 }
 
+/* =========================
+   GEOLOCATION
+   ========================= */
 
-/* =========================================================
-   LOCATION
-========================================================= */
+function getCurrentPosition() {
+
+    return new Promise((resolve, reject) => {
+
+        if (!navigator.geolocation) {
+            reject(
+                new Error("المتصفح لا يدعم تحديد الموقع.")
+            );
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+
+    });
+}
+
+/* =========================
+   DISTANCE CALCULATION
+   ========================= */
 
 function calculateDistance(
     lat1,
@@ -525,39 +425,22 @@ function calculateDistance(
     lon2
 ) {
 
-    const R = 6371e3;
+    const R = 6371000;
 
+    const dLat =
+        (lat2 - lat1) * Math.PI / 180;
 
-    const φ1 =
-        lat1 * Math.PI / 180;
-
-
-    const φ2 =
-        lat2 * Math.PI / 180;
-
-
-    const Δφ =
-        (lat2 - lat1)
-        * Math.PI / 180;
-
-
-    const Δλ =
-        (lon2 - lon1)
-        * Math.PI / 180;
-
+    const dLon =
+        (lon2 - lon1) * Math.PI / 180;
 
     const a =
-        Math.sin(Δφ / 2)
-        * Math.sin(Δφ / 2)
-        +
-        Math.cos(φ1)
-        *
-        Math.cos(φ2)
-        *
-        Math.sin(Δλ / 2)
-        *
-        Math.sin(Δλ / 2);
+        Math.sin(dLat / 2) *
+        Math.sin(dLat / 2) +
 
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
 
     const c =
         2 *
@@ -566,1327 +449,859 @@ function calculateDistance(
             Math.sqrt(1 - a)
         );
 
-
     return R * c;
 }
 
+/* =========================
+   CHECK LOCATION
+   ========================= */
 
-async function checkEmployeeLocation(
-    callback = null
-) {
+async function checkEmployeeLocation() {
 
-    const status =
-        document.getElementById(
-            "locationStatus"
+    if (!companySettings) {
+
+        const doc = await db
+            .collection("company")
+            .doc("settings")
+            .get();
+
+        if (!doc.exists) {
+            throw new Error(
+                "لم يتم إعداد موقع الشركة."
+            );
+        }
+
+        companySettings = doc.data();
+    }
+
+    const position =
+        await getCurrentPosition();
+
+    const userLat =
+        position.coords.latitude;
+
+    const userLng =
+        position.coords.longitude;
+
+    const companyLat =
+        Number(companySettings.latitude);
+
+    const companyLng =
+        Number(companySettings.longitude);
+
+    const radius =
+        Number(companySettings.radius || 200);
+
+    if (
+        !Number.isFinite(companyLat) ||
+        !Number.isFinite(companyLng)
+    ) {
+
+        throw new Error(
+            "إحداثيات الشركة غير مضبوطة."
+        );
+    }
+
+    const distance =
+        calculateDistance(
+            userLat,
+            userLng,
+            companyLat,
+            companyLng
         );
 
+    if (distance > radius) {
 
-    const distanceElement =
-        document.getElementById(
-            "locationDistance"
+        throw new Error(
+            `أنت خارج نطاق الشركة.\nالمسافة الحالية تقريباً ${Math.round(distance)} متر.\nالمسموح ${radius} متر.`
         );
+    }
 
+    return {
+        latitude: userLat,
+        longitude: userLng,
+        accuracy: position.coords.accuracy,
+        distance
+    };
+}
 
-    if (!status) return;
+/* =========================
+   CLOCK IN
+   ========================= */
 
+async function clockIn() {
 
-    status.innerText =
-        "جاري تحديد موقعك...";
-
-
-    distanceElement.innerText = "";
-
-
-    if (!navigator.geolocation) {
-
-        status.innerText =
-            "تحديد الموقع غير مدعوم في المتصفح.";
-
-        if (callback) callback(false);
-
+    if (!currentEmployeeId) {
+        showMessage("لم يتم تسجيل الموظف.");
         return;
     }
 
-
     try {
 
-        const doc =
+        const location =
+            await checkEmployeeLocation();
+
+        const today =
+            formatDate(new Date());
+
+        const existing =
             await db
-                .collection("settings")
-                .doc("company")
+                .collection("attendance")
+                .where("employeeId", "==", currentEmployeeId)
+                .where("date", "==", today)
+                .limit(1)
                 .get();
 
+        if (!existing.empty) {
 
-        const settings =
-            doc.exists
-                ? {
-                    ...cachedSettings,
-                    ...doc.data()
-                }
-                : cachedSettings;
+            const record =
+                existing.docs[0].data();
 
+            if (record.clockIn && !record.clockOut) {
 
-        navigator.geolocation.getCurrentPosition(
+                showMessage(
+                    "أنت مسجل دخول بالفعل."
+                );
 
-            position => {
-
-                const userLat =
-                    position.coords.latitude;
-
-
-                const userLng =
-                    position.coords.longitude;
-
-
-                const distance =
-                    calculateDistance(
-                        userLat,
-                        userLng,
-                        Number(settings.lat),
-                        Number(settings.lng)
-                    );
-
-
-                const radius =
-                    Number(
-                        settings.radiusMeters || 100
-                    );
-
-
-                distanceElement.innerText =
-                    `المسافة: ${Math.round(distance)} متر • المسموح: ${radius} متر`;
-
-
-                if (distance <= radius) {
-
-                    status.innerHTML =
-                        `<span style="color:#15803d;font-weight:800;">
-                            ✓ أنت داخل نطاق الشركة
-                        </span>`;
-
-
-                    if (callback) callback(true);
-
-                } else {
-
-                    status.innerHTML =
-                        `<span style="color:#dc2626;font-weight:800;">
-                            ✕ أنت خارج نطاق الشركة
-                        </span>`;
-
-
-                    if (callback) callback(false);
-
-                }
-
-            },
-
-            error => {
-
-                console.error(error);
-
-
-                status.innerText =
-                    "يرجى تفعيل GPS والسماح بالوصول إلى الموقع.";
-
-
-                distanceElement.innerText =
-                    "";
-
-
-                if (callback) callback(false);
-
-            },
-
-            {
-                enableHighAccuracy: true,
-
-                timeout: 10000,
-
-                maximumAge: 0
-
+                return;
             }
+        }
+
+        const now = new Date();
+
+        const record = {
+
+            employeeId: currentEmployeeId,
+
+            employeeName:
+                currentEmployee.fullName,
+
+            date: today,
+
+            clockIn:
+                formatTime(now),
+
+            clockInTimestamp:
+                firebase.firestore.Timestamp.fromDate(now),
+
+            clockOut: null,
+
+            clockOutTimestamp: null,
+
+            breaks: [],
+
+            totalBreakMinutes: 0,
+
+            netWorkHours: 0,
+
+            overtimeHours: 0,
+
+            latitude:
+                location.latitude,
+
+            longitude:
+                location.longitude,
+
+            locationAccuracy:
+                location.accuracy,
+
+            locationDistance:
+                location.distance,
+
+            status: "open",
+
+            createdAt:
+                firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db
+            .collection("attendance")
+            .add(record);
+
+        showMessage(
+            `تم تسجيل الدخول بنجاح الساعة ${formatTime(now)}`
         );
 
+        await updateEmployeeDashboard();
 
     } catch (error) {
 
         console.error(error);
 
-        status.innerText =
-            "تعذر تحميل إعدادات الموقع.";
-
-        if (callback) callback(false);
+        showMessage(
+            error.message ||
+            "تعذر تسجيل الدخول."
+        );
     }
 }
 
+/* =========================
+   CLOCK OUT
+   ========================= */
 
-/* =========================================================
-   GET TODAY ATTENDANCE
-========================================================= */
+async function clockOut() {
 
-async function getTodayAttendance() {
-
-    if (!currentEmployee) return null;
-
-
-    const today =
-        getLocalDateString();
-
-
-    const snapshot =
-        await db
-            .collection("attendance")
-            .where(
-                "empId",
-                "==",
-                currentEmployee.id
-            )
-            .where(
-                "date",
-                "==",
-                today
-            )
-            .get();
-
-
-    if (snapshot.empty) {
-
-        return null;
+    if (!currentEmployeeId) {
+        showMessage("لم يتم تسجيل الموظف.");
+        return;
     }
-
-
-    return {
-        id: snapshot.docs[0].id,
-        ...snapshot.docs[0].data()
-    };
-}
-
-
-/* =========================================================
-   UPDATE EMPLOYEE STATUS
-========================================================= */
-
-async function updateTodayAttendance() {
 
     try {
 
-        const record =
-            await getTodayAttendance();
+        const location =
+            await checkEmployeeLocation();
 
+        const today =
+            formatDate(new Date());
 
-        const clockInButton =
-            document.getElementById(
-                "btnClockIn"
+        const snapshot =
+            await db
+                .collection("attendance")
+                .where("employeeId", "==", currentEmployeeId)
+                .where("date", "==", today)
+                .limit(1)
+                .get();
+
+        if (snapshot.empty) {
+
+            showMessage(
+                "لا يوجد تسجيل دخول اليوم."
             );
-
-
-        const clockOutButton =
-            document.getElementById(
-                "btnClockOut"
-            );
-
-
-        if (!record) {
-
-            document
-                .getElementById("todayStatus")
-                .innerText =
-                "لم يتم تسجيل الحضور";
-
-
-            document
-                .getElementById("todayClockIn")
-                .innerText =
-                "--:--";
-
-
-            document
-                .getElementById("todayClockOut")
-                .innerText =
-                "--:--";
-
-
-            document
-                .getElementById("todayDuration")
-                .innerText =
-                "--";
-
-
-            document
-                .getElementById("todayStatusIcon")
-                .className =
-                "status-icon neutral";
-
-
-            document
-                .getElementById("todayStatusIcon")
-                .innerText =
-                "⏱";
-
-
-            clockInButton.disabled = false;
-
-            clockOutButton.disabled = true;
 
             return;
         }
 
+        const doc =
+            snapshot.docs[0];
 
-        document
-            .getElementById("todayClockIn")
-            .innerText =
-            record.clockIn || "--:--";
+        const data =
+            doc.data();
 
+        if (!data.clockInTimestamp) {
 
-        document
-            .getElementById("todayClockOut")
-            .innerText =
-            record.clockOut || "--:--";
+            showMessage(
+                "بيانات تسجيل الدخول غير مكتملة."
+            );
 
-
-        if (
-            record.clockOut &&
-            record.clockOut !== "--"
-        ) {
-
-            document
-                .getElementById("todayStatus")
-                .innerText =
-                "تم إنهاء الدوام";
-
-
-            document
-                .getElementById("todayStatusIcon")
-                .className =
-                "status-icon finished";
-
-
-            document
-                .getElementById("todayStatusIcon")
-                .innerText =
-                "✓";
-
-
-            document
-                .getElementById("todayDuration")
-                .innerText =
-                calculateDuration(
-                    record.clockIn,
-                    record.clockOut
-                );
-
-
-            clockInButton.disabled = true;
-
-            clockOutButton.disabled = true;
-
-        } else {
-
-            document
-                .getElementById("todayStatus")
-                .innerText =
-                "أنت على رأس عملك";
-
-
-            document
-                .getElementById("todayStatusIcon")
-                .className =
-                "status-icon present";
-
-
-            document
-                .getElementById("todayStatusIcon")
-                .innerText =
-                "🟢";
-
-
-            document
-                .getElementById("todayDuration")
-                .innerText =
-                calculateDuration(
-                    record.clockIn,
-                    getLocalTimeString()
-                );
-
-
-            clockInButton.disabled = true;
-
-            clockOutButton.disabled = false;
-
+            return;
         }
+
+        if (data.clockOut) {
+
+            showMessage(
+                "تم تسجيل الخروج مسبقاً."
+            );
+
+            return;
+        }
+
+        const now = new Date();
+
+        const clockInDate =
+            data.clockInTimestamp.toDate();
+
+        const grossMilliseconds =
+            now.getTime() -
+            clockInDate.getTime();
+
+        const totalBreakMinutes =
+            calculateBreakMinutes(
+                data.breaks || []
+            );
+
+        const netMilliseconds =
+            grossMilliseconds -
+            totalBreakMinutes * 60 * 1000;
+
+        const netHours =
+            Math.max(
+                0,
+                millisecondsToHours(
+                    netMilliseconds
+                )
+            );
+
+        const requiredHours =
+            Number(
+                companySettings?.dailyWorkHours ||
+                8
+            );
+
+        const overtimeHours =
+            Math.max(
+                0,
+                netHours - requiredHours
+            );
+
+        await db
+            .collection("attendance")
+            .doc(doc.id)
+            .update({
+
+                clockOut:
+                    formatTime(now),
+
+                clockOutTimestamp:
+                    firebase.firestore.Timestamp.fromDate(now),
+
+                totalBreakMinutes,
+
+                netWorkHours:
+                    Number(netHours.toFixed(2)),
+
+                overtimeHours:
+                    Number(overtimeHours.toFixed(2)),
+
+                clockOutLatitude:
+                    location.latitude,
+
+                clockOutLongitude:
+                    location.longitude,
+
+                clockOutDistance:
+                    location.distance,
+
+                status: "closed",
+
+                updatedAt:
+                    firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+        showMessage(
+            `تم إنهاء الدوام.\nساعات العمل: ${formatHours(netHours)}`
+        );
+
+        await updateEmployeeDashboard();
 
     } catch (error) {
 
         console.error(error);
+
+        showMessage(
+            error.message ||
+            "تعذر تسجيل الخروج."
+        );
     }
 }
 
+/* =========================
+   BREAK CALCULATION
+   ========================= */
 
-/* =========================================================
-   TIME CALCULATION
-========================================================= */
+function calculateBreakMinutes(breaks) {
 
-function parseTime(timeString) {
+    let total = 0;
 
-    if (!timeString) return null;
+    breaks.forEach(item => {
 
+        if (
+            item.startTimestamp &&
+            item.endTimestamp
+        ) {
 
-    const match =
-        String(timeString).match(
-            /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(ص|م|AM|PM)?/i
-        );
+            const start =
+                item.startTimestamp.toDate();
 
+            const end =
+                item.endTimestamp.toDate();
 
-    if (!match) return null;
+            const minutes =
+                (end - start) /
+                (1000 * 60);
 
-
-    let hours =
-        Number(match[1]);
-
-
-    const minutes =
-        Number(match[2]);
-
-
-    const period =
-        match[4];
-
-
-    if (
-        period &&
-        (
-            period === "م" ||
-            period.toUpperCase() === "PM"
-        )
-    ) {
-
-        if (hours < 12) hours += 12;
-
-    }
-
-
-    if (
-        period &&
-        (
-            period === "ص" ||
-            period.toUpperCase() === "AM"
-        )
-        &&
-        hours === 12
-    ) {
-
-        hours = 0;
-
-    }
-
-
-    return hours * 60 + minutes;
-}
-
-
-function calculateDuration(
-    start,
-    end
-) {
-
-    const startMinutes =
-        parseTime(start);
-
-
-    const endMinutes =
-        parseTime(end);
-
-
-    if (
-        startMinutes === null ||
-        endMinutes === null
-    ) {
-
-        return "--";
-    }
-
-
-    let difference =
-        endMinutes - startMinutes;
-
-
-    if (difference < 0) {
-
-        difference += 24 * 60;
-    }
-
-
-    const hours =
-        Math.floor(
-            difference / 60
-        );
-
-
-    const minutes =
-        difference % 60;
-
-
-    return `${hours} س ${minutes} د`;
-}
-
-
-/* =========================================================
-   CLOCK IN
-========================================================= */
-
-async function clockIn() {
-
-    const button =
-        document.getElementById(
-            "btnClockIn"
-        );
-
-
-    button.disabled = true;
-
-
-    checkEmployeeLocation(
-        async isWithin => {
-
-            if (!isWithin) {
-
-                button.disabled = false;
-
-                showToast(
-                    "لا يمكنك تسجيل الحضور لأنك خارج نطاق الشركة.",
-                    "error"
-                );
-
-                return;
+            if (minutes > 0) {
+                total += minutes;
             }
-
-
-            const today =
-                getLocalDateString();
-
-
-            const timeNow =
-                getLocalTimeString();
-
-
-            try {
-
-                const snapshot =
-                    await db
-                        .collection("attendance")
-                        .where(
-                            "empId",
-                            "==",
-                            currentEmployee.id
-                        )
-                        .where(
-                            "date",
-                            "==",
-                            today
-                        )
-                        .get();
-
-
-                if (!snapshot.empty) {
-
-                    showToast(
-                        "تم تسجيل الحضور لهذا اليوم مسبقاً.",
-                        "warning"
-                    );
-
-                    await updateTodayAttendance();
-
-                    return;
-                }
-
-
-                await db
-                    .collection("attendance")
-                    .add({
-
-                        empId:
-                            currentEmployee.id,
-
-                        empName:
-                            currentEmployee.fullName,
-
-                        date:
-                            today,
-
-                        clockIn:
-                            timeNow,
-
-                        clockOut:
-                            "--",
-
-                        status:
-                            "حاضر",
-
-                        createdAt:
-                            firebase.firestore.FieldValue.serverTimestamp()
-
-                    });
-
-
-                showToast(
-                    `تم تسجيل الحضور الساعة ${timeNow}`,
-                    "success"
-                );
-
-
-                await updateTodayAttendance();
-
-
-            } catch (error) {
-
-                console.error(error);
-
-                showToast(
-                    "حدث خطأ أثناء تسجيل الحضور.",
-                    "error"
-                );
-
-
-                button.disabled = false;
-            }
-
         }
-    );
+    });
+
+    return Math.round(total);
 }
 
+/* =========================
+   START BREAK
+   ========================= */
 
-/* =========================================================
-   CLOCK OUT
-========================================================= */
+async function startBreak() {
 
-async function clockOut() {
+    if (!currentEmployeeId) return;
 
-    const button =
-        document.getElementById(
-            "btnClockOut"
+    const today =
+        formatDate(new Date());
+
+    const snapshot =
+        await db
+            .collection("attendance")
+            .where("employeeId", "==", currentEmployeeId)
+            .where("date", "==", today)
+            .limit(1)
+            .get();
+
+    if (snapshot.empty) {
+
+        showMessage(
+            "يجب تسجيل الدخول أولاً."
         );
-
-
-    button.disabled = true;
-
-
-    checkEmployeeLocation(
-        async isWithin => {
-
-            if (!isWithin) {
-
-                button.disabled = false;
-
-                showToast(
-                    "لا يمكنك تسجيل الانصراف لأنك خارج نطاق الشركة.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            const today =
-                getLocalDateString();
-
-
-            const timeNow =
-                getLocalTimeString();
-
-
-            try {
-
-                const snapshot =
-                    await db
-                        .collection("attendance")
-                        .where(
-                            "empId",
-                            "==",
-                            currentEmployee.id
-                        )
-                        .where(
-                            "date",
-                            "==",
-                            today
-                        )
-                        .get();
-
-
-                if (snapshot.empty) {
-
-                    showToast(
-                        "لم يتم تسجيل حضورك اليوم.",
-                        "warning"
-                    );
-
-                    button.disabled = false;
-
-                    return;
-                }
-
-
-                const doc =
-                    snapshot.docs[0];
-
-
-                const data =
-                    doc.data();
-
-
-                if (
-                    data.clockOut &&
-                    data.clockOut !== "--"
-                ) {
-
-                    showToast(
-                        "تم تسجيل الانصراف مسبقاً.",
-                        "warning"
-                    );
-
-                    await updateTodayAttendance();
-
-                    return;
-                }
-
-
-                await db
-                    .collection("attendance")
-                    .doc(doc.id)
-                    .update({
-
-                        clockOut:
-                            timeNow,
-
-                        status:
-                            "مكتمل",
-
-                        updatedAt:
-                            firebase.firestore.FieldValue.serverTimestamp()
-
-                    });
-
-
-                showToast(
-                    `تم تسجيل الانصراف الساعة ${timeNow}`,
-                    "success"
-                );
-
-
-                await updateTodayAttendance();
-
-
-            } catch (error) {
-
-                console.error(error);
-
-                showToast(
-                    "حدث خطأ أثناء تسجيل الانصراف.",
-                    "error"
-                );
-
-                button.disabled = false;
-            }
-
-        }
-    );
-}
-
-
-/* =========================================================
-   ADMIN LOGIN
-========================================================= */
-
-async function loginAdmin() {
-
-    const password =
-        document
-            .getElementById(
-                "adminPasswordInput"
-            )
-            .value;
-
-
-    const error =
-        document.getElementById(
-            "adminLoginError"
-        );
-
-
-    if (!password) {
-
-        error.innerText =
-            "يرجى إدخال كلمة المرور.";
 
         return;
     }
 
+    const doc =
+        snapshot.docs[0];
+
+    const data =
+        doc.data();
+
+    if (!data.clockIn || data.clockOut) {
+
+        showMessage(
+            "لا يوجد دوام مفتوح."
+        );
+
+        return;
+    }
+
+    const breaks =
+        data.breaks || [];
+
+    const activeBreak =
+        breaks.find(
+            b => b.active === true
+        );
+
+    if (activeBreak) {
+
+        showMessage(
+            "يوجد بريك مفتوح بالفعل."
+        );
+
+        return;
+    }
+
+    breaks.push({
+
+        start:
+            formatTime(new Date()),
+
+        startTimestamp:
+            firebase.firestore.Timestamp.fromDate(
+                new Date()
+            ),
+
+        end: null,
+
+        endTimestamp: null,
+
+        active: true
+    });
+
+    await db
+        .collection("attendance")
+        .doc(doc.id)
+        .update({
+            breaks
+        });
+
+    showMessage(
+        "تم بدء البريك."
+    );
+}
+
+/* =========================
+   END BREAK
+   ========================= */
+
+async function endBreak() {
+
+    if (!currentEmployeeId) return;
+
+    const today =
+        formatDate(new Date());
+
+    const snapshot =
+        await db
+            .collection("attendance")
+            .where("employeeId", "==", currentEmployeeId)
+            .where("date", "==", today)
+            .limit(1)
+            .get();
+
+    if (snapshot.empty) {
+
+        showMessage(
+            "لا يوجد دوام اليوم."
+        );
+
+        return;
+    }
+
+    const doc =
+        snapshot.docs[0];
+
+    const data =
+        doc.data();
+
+    const breaks =
+        data.breaks || [];
+
+    const index =
+        breaks.findIndex(
+            b => b.active === true
+        );
+
+    if (index === -1) {
+
+        showMessage(
+            "لا يوجد بريك مفتوح."
+        );
+
+        return;
+    }
+
+    const now =
+        new Date();
+
+    breaks[index].end =
+        formatTime(now);
+
+    breaks[index].endTimestamp =
+        firebase.firestore.Timestamp.fromDate(now);
+
+    breaks[index].active = false;
+
+    const totalBreakMinutes =
+        calculateBreakMinutes(breaks);
+
+    await db
+        .collection("attendance")
+        .doc(doc.id)
+        .update({
+
+            breaks,
+
+            totalBreakMinutes
+
+        });
+
+    showMessage(
+        `انتهى البريك.\nإجمالي البريك اليوم: ${totalBreakMinutes} دقيقة`
+    );
+}
+
+/* =========================
+   ADMIN LOGIN
+   ========================= */
+
+function showAdminLogin() {
+
+    hideElement("companyCodeSection");
+    hideElement("employeeRegisterSection");
+
+    showElement("adminLoginSection");
+
+    const input =
+        $("adminPasswordInput");
+
+    if (input) input.focus();
+}
+
+async function loginAdmin() {
+
+    const password =
+        getValue("adminPasswordInput");
+
+    if (!password) {
+
+        showMessage(
+            "أدخل كلمة مرور الإدارة."
+        );
+
+        return;
+    }
 
     try {
 
         const doc =
             await db
-                .collection("settings")
-                .doc("company")
+                .collection("company")
+                .doc("settings")
                 .get();
 
+        if (!doc.exists) {
 
-        const settings =
-            doc.exists
-                ? {
-                    ...cachedSettings,
-                    ...doc.data()
-                }
-                : cachedSettings;
-
-
-        if (
-            password ===
-            String(
-                settings.adminPassword || "admin"
-            )
-        ) {
-
-            error.innerText = "";
-
-            showToast(
-                "تم تسجيل الدخول بنجاح.",
-                "success"
+            showMessage(
+                "إعدادات الشركة غير موجودة."
             );
 
-
-            setTimeout(
-                () => {
-
-                    hideAllScreens();
-
-                    document
-                        .getElementById("adminDashboard")
-                        .classList.remove("hidden");
-
-                    loadAdminData();
-
-                },
-                250
-            );
-
-
-        } else {
-
-            error.innerText =
-                "كلمة المرور غير صحيحة.";
+            return;
         }
 
+        companySettings =
+            doc.data();
+
+        if (
+            String(companySettings.adminPassword) !==
+            String(password)
+        ) {
+
+            showMessage(
+                "كلمة مرور الإدارة غير صحيحة."
+            );
+
+            return;
+        }
+
+        isAdmin = true;
+
+        localStorage.setItem(
+            "dawami_admin",
+            "true"
+        );
+
+        openAdminDashboard();
 
     } catch (error) {
 
         console.error(error);
 
-        error.innerText =
-            "تعذر الاتصال بقاعدة البيانات.";
-    }
-}
-
-
-/* =========================================================
-   ADMIN TABS
-========================================================= */
-
-function switchAdminTab(
-    tab,
-    button
-) {
-
-    document
-        .querySelectorAll(".admin-tab")
-        .forEach(tabButton => {
-
-            tabButton.classList.remove(
-                "active"
-            );
-
-        });
-
-
-    document
-        .querySelectorAll(
-            ".admin-tab-content"
-        )
-        .forEach(content => {
-
-            content.classList.remove(
-                "active"
-            );
-
-        });
-
-
-    button.classList.add("active");
-
-
-    const target =
-        document.getElementById(
-            "adminTab" +
-            tab.charAt(0).toUpperCase() +
-            tab.slice(1)
-        );
-
-
-    if (target) {
-
-        target.classList.add("active");
-
-    }
-}
-
-
-/* =========================================================
-   ADMIN DATA
-========================================================= */
-
-async function loadAdminData() {
-
-    try {
-
-        await loadCompanySettings();
-
-        await loadEmployees();
-
-        await loadAttendance();
-
-        updateAdminDate();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        showToast(
-            "تعذر تحميل بيانات لوحة التحكم.",
-            "error"
+        showMessage(
+            "حدث خطأ أثناء تسجيل الدخول."
         );
     }
 }
 
+/* =========================
+   ADMIN DASHBOARD
+   ========================= */
 
-/* =========================================================
-   SETTINGS
-========================================================= */
+async function openAdminDashboard() {
+
+    hideElement("companyCodeSection");
+    hideElement("employeeRegisterSection");
+    hideElement("adminLoginSection");
+    hideElement("employeeDashboard");
+
+    showElement("adminDashboard");
+
+    await loadCompanySettings();
+
+    await loadEmployees();
+
+    await loadAttendance();
+
+    await updateAdminStats();
+}
+
+/* =========================
+   COMPANY SETTINGS
+   ========================= */
 
 async function loadCompanySettings() {
 
-    const doc =
-        await db
-            .collection("settings")
-            .doc("company")
-            .get();
+    try {
 
+        const doc =
+            await db
+                .collection("company")
+                .doc("settings")
+                .get();
 
-    if (!doc.exists) return;
+        if (!doc.exists) return;
 
+        companySettings =
+            doc.data();
 
-    const settings =
-        doc.data();
+        setValue(
+            "settingCompanyCode",
+            companySettings.companyCode
+        );
 
+        setValue(
+            "settingAdminPassword",
+            companySettings.adminPassword
+        );
 
-    cachedSettings = {
-        ...cachedSettings,
-        ...settings
-    };
+        setValue(
+            "settingLat",
+            companySettings.latitude
+        );
 
+        setValue(
+            "settingLng",
+            companySettings.longitude
+        );
 
-    document
-        .getElementById("settingCompanyCode")
-        .value =
-        settings.companyCode || "COMP123";
+        setValue(
+            "settingRadius",
+            companySettings.radius || 200
+        );
 
+    } catch (error) {
 
-    document
-        .getElementById("settingAdminPassword")
-        .value =
-        settings.adminPassword || "admin";
-
-
-    document
-        .getElementById("settingLat")
-        .value =
-        settings.lat || "";
-
-
-    document
-        .getElementById("settingLng")
-        .value =
-        settings.lng || "";
-
-
-    document
-        .getElementById("settingRadius")
-        .value =
-        settings.radiusMeters || 100;
+        console.error(error);
+    }
 }
 
-
-/* =========================================================
-   SAVE SETTINGS
-========================================================= */
+/* =========================
+   SAVE COMPANY SETTINGS
+   ========================= */
 
 async function saveCompanySettings() {
 
     const companyCode =
-        document
-            .getElementById(
-                "settingCompanyCode"
-            )
-            .value
-            .trim();
-
+        getValue("settingCompanyCode");
 
     const adminPassword =
-        document
-            .getElementById(
-                "settingAdminPassword"
-            )
-            .value
-            .trim();
+        getValue("settingAdminPassword");
 
+    const latitude =
+        Number(getValue("settingLat"));
 
-    const lat =
-        parseFloat(
-            document
-                .getElementById(
-                    "settingLat"
-                )
-                .value
-        );
-
-
-    const lng =
-        parseFloat(
-            document
-                .getElementById(
-                    "settingLng"
-                )
-                .value
-        );
-
+    const longitude =
+        Number(getValue("settingLng"));
 
     const radius =
-        parseInt(
-            document
-                .getElementById(
-                    "settingRadius"
-                )
-                .value
-        );
+        Number(getValue("settingRadius"));
 
+    if (!companyCode) {
 
-    if (
-        !companyCode ||
-        !adminPassword ||
-        Number.isNaN(lat) ||
-        Number.isNaN(lng) ||
-        Number.isNaN(radius)
-    ) {
-
-        showToast(
-            "يرجى التأكد من تعبئة جميع إعدادات الشركة.",
-            "warning"
+        showMessage(
+            "أدخل كود الشركة."
         );
 
         return;
     }
 
+    if (!adminPassword) {
 
-    try {
+        showMessage(
+            "أدخل كلمة مرور الإدارة."
+        );
 
-        const newSettings = {
+        return;
+    }
+
+    if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude)
+    ) {
+
+        showMessage(
+            "إحداثيات الموقع غير صحيحة."
+        );
+
+        return;
+    }
+
+    await db
+        .collection("company")
+        .doc("settings")
+        .set({
 
             companyCode,
 
             adminPassword,
 
-            lat,
+            latitude,
 
-            lng,
+            longitude,
 
-            radiusMeters: radius,
+            radius:
+                radius || 200,
+
+            dailyWorkHours:
+                companySettings?.dailyWorkHours || 8,
 
             updatedAt:
                 firebase.firestore.FieldValue.serverTimestamp()
 
-        };
+        }, {
+            merge: true
+        });
 
+    companySettings = {
+        ...companySettings,
 
-        await db
-            .collection("settings")
-            .doc("company")
-            .set(
-                newSettings,
-                {
-                    merge: true
-                }
-            );
+        companyCode,
+        adminPassword,
+        latitude,
+        longitude,
+        radius
+    };
 
+    showMessage(
+        "تم حفظ إعدادات الشركة."
+    );
+}
 
-        cachedSettings = {
-            ...cachedSettings,
-            ...newSettings
-        };
+/* =========================
+   ADMIN LOCATION
+   ========================= */
 
+async function getCurrentLocationForAdmin() {
 
-        showToast(
-            "تم حفظ إعدادات الشركة بنجاح.",
-            "success"
+    try {
+
+        const position =
+            await getCurrentPosition();
+
+        setValue(
+            "settingLat",
+            position.coords.latitude.toFixed(7)
         );
 
+        setValue(
+            "settingLng",
+            position.coords.longitude.toFixed(7)
+        );
+
+        showMessage(
+            "تم الحصول على موقعك الحالي."
+        );
 
     } catch (error) {
 
         console.error(error);
 
-        showToast(
-            "حدث خطأ أثناء حفظ الإعدادات.",
-            "error"
+        showMessage(
+            "تعذر الحصول على موقعك الحالي."
         );
     }
 }
 
-
-/* =========================================================
-   ADMIN LOCATION
-========================================================= */
-
-function getCurrentLocationForAdmin() {
-
-    if (!navigator.geolocation) {
-
-        showToast(
-            "المتصفح لا يدعم تحديد الموقع.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    showToast(
-        "جاري تحديد موقعك الحالي...",
-        "warning"
-    );
-
-
-    navigator.geolocation.getCurrentPosition(
-
-        position => {
-
-            document
-                .getElementById("settingLat")
-                .value =
-                position.coords.latitude;
-
-
-            document
-                .getElementById("settingLng")
-                .value =
-                position.coords.longitude;
-
-
-            showToast(
-                "تم تحديد موقع الشركة بنجاح.",
-                "success"
-            );
-
-        },
-
-        error => {
-
-            console.error(error);
-
-            showToast(
-                "تعذر الحصول على الموقع. تأكد من تفعيل GPS.",
-                "error"
-            );
-        },
-
-        {
-            enableHighAccuracy: true,
-
-            timeout: 10000,
-
-            maximumAge: 0
-        }
-    );
-}
-
-
-/* =========================================================
-   EMPLOYEES
-========================================================= */
-
-async function loadEmployees() {
-
-    const snapshot =
-        await db
-            .collection("employees")
-            .get();
-
-
-    employeesCache = [];
-
-
-    const select =
-        document.getElementById(
-            "pdfEmpSelect"
-        );
-
-
-    select.innerHTML =
-        `<option value="ALL">جميع الموظفين</option>`;
-
-
-    const list =
-        document.getElementById(
-            "employeesList"
-        );
-
-
-    list.innerHTML = "";
-
-
-    snapshot.forEach(doc => {
-
-        const employee = {
-
-            id: doc.id,
-
-            ...doc.data()
-
-        };
-
-
-        employeesCache.push(employee);
-
-
-        const option =
-            document.createElement(
-                "option"
-            );
-
-
-        option.value =
-            employee.id;
-
-
-        option.textContent =
-            `${employee.fullName} — ${employee.jobTitle}`;
-
-
-        select.appendChild(option);
-
-
-        list.innerHTML += `
-
-            <div class="employee-list-item">
-
-                <div class="employee-avatar">
-                    ${escapeHtml(
-                        employee.fullName
-                            ?.charAt(0) || "م"
-                    )}
-                </div>
-
-                <div class="employee-list-info">
-
-                    <strong>
-                        ${escapeHtml(
-                            employee.fullName || "بدون اسم"
-                        )}
-                    </strong>
-
-                    <span>
-                        ${escapeHtml(
-                            employee.jobTitle || "موظف"
-                        )}
-                        •
-                        ${escapeHtml(
-                            employee.phone || ""
-                        )}
-                    </span>
-
-                </div>
-
-            </div>
-
-        `;
-
-    });
-
-
-    document
-        .getElementById(
-            "statEmployees"
-        )
-        .innerText =
-        employeesCache.length;
-
-
-    document
-        .getElementById(
-            "employeeCountBadge"
-        )
-        .innerText =
-        `${employeesCache.length} موظف`;
-}
-
-
-/* =========================================================
+/* =========================
    ADD EMPLOYEE
-========================================================= */
+   ========================= */
 
 async function adminAddEmployee(event) {
 
     event.preventDefault();
 
+    const name =
+        getValue("newEmpName");
 
-    const newEmployee = {
+    const nationalId =
+        getValue("newEmpId");
 
-        fullName:
-            document
-                .getElementById(
-                    "newEmpName"
-                )
-                .value
-                .trim(),
+    const phone =
+        getValue("newEmpPhone");
 
-        nationalId:
-            document
-                .getElementById(
-                    "newEmpId"
-                )
-                .value
-                .trim(),
+    const title =
+        getValue("newEmpTitle");
 
-        phone:
-            document
-                .getElementById(
-                    "newEmpPhone"
-                )
-                .value
-                .trim(),
+    if (
+        !name ||
+        !nationalId ||
+        !phone ||
+        !title
+    ) {
 
-        jobTitle:
-            document
-                .getElementById(
-                    "newEmpTitle"
-                )
-                .value
-                .trim(),
+        showMessage(
+            "يرجى تعبئة جميع بيانات الموظف."
+        );
 
-        createdAt:
-            firebase.firestore.FieldValue.serverTimestamp()
-
-    };
-
+        return;
+    }
 
     try {
 
@@ -1896,793 +1311,859 @@ async function adminAddEmployee(event) {
                 .where(
                     "nationalId",
                     "==",
-                    newEmployee.nationalId
+                    nationalId
                 )
+                .limit(1)
                 .get();
-
 
         if (!existing.empty) {
 
-            showToast(
-                "يوجد موظف مسجل مسبقاً بنفس رقم الهوية.",
-                "warning"
+            showMessage(
+                "هذا الموظف موجود مسبقاً."
             );
 
             return;
         }
 
-
         await db
             .collection("employees")
-            .add(newEmployee);
+            .add({
 
+                fullName: name,
 
-        event.target.reset();
+                nationalId,
 
+                phone,
 
-        showToast(
-            "تمت إضافة الموظف بنجاح.",
-            "success"
-        );
+                jobTitle: title,
 
+                active: true,
 
-        await loadEmployees();
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        showToast(
-            "حدث خطأ أثناء إضافة الموظف.",
-            "error"
-        );
-    }
-}
-
-
-/* =========================================================
-   ATTENDANCE
-========================================================= */
-
-async function loadAttendance() {
-
-    if (unsubscribeAttendance) {
-
-        unsubscribeAttendance();
-
-        unsubscribeAttendance = null;
-    }
-
-
-    unsubscribeAttendance =
-        db
-            .collection("attendance")
-            .onSnapshot(
-
-                snapshot => {
-
-                    attendanceLogs = [];
-
-
-                    snapshot.forEach(doc => {
-
-                        attendanceLogs.push({
-
-                            id: doc.id,
-
-                            ...doc.data()
-
-                        });
-
-                    });
-
-
-                    attendanceLogs.sort(
-                        (a, b) =>
-                            String(b.date || "")
-                                .localeCompare(
-                                    String(a.date || "")
-                                )
-                    );
-
-
-                    renderAttendanceTable();
-
-                    updateAttendanceStats();
-
-                },
-
-                error => {
-
-                    console.error(error);
-
-                    showToast(
-                        "تعذر تحديث سجلات الدوام.",
-                        "error"
-                    );
-                }
-            );
-}
-
-
-/* =========================================================
-   RENDER ATTENDANCE
-========================================================= */
-
-function renderAttendanceTable(
-    logs = attendanceLogs
-) {
-
-    const tbody =
-        document.getElementById(
-            "attendanceTableBody"
-        );
-
-
-    const empty =
-        document.getElementById(
-            "emptyAttendance"
-        );
-
-
-    tbody.innerHTML = "";
-
-
-    if (!logs.length) {
-
-        empty.classList.remove("hidden");
-
-        return;
-
-    }
-
-
-    empty.classList.add("hidden");
-
-
-    logs.forEach(log => {
-
-        const tr =
-            document.createElement("tr");
-
-
-        const duration =
-            log.clockOut &&
-            log.clockOut !== "--"
-                ? calculateDuration(
-                    log.clockIn,
-                    log.clockOut
-                )
-                : "--";
-
-
-        tr.innerHTML = `
-
-            <td>
-                <strong>
-                    ${escapeHtml(
-                        log.empName || "غير معروف"
-                    )}
-                </strong>
-            </td>
-
-            <td>
-                ${escapeHtml(
-                    log.date || "--"
-                )}
-            </td>
-
-            <td>
-
-                <input
-                    type="text"
-                    value="${escapeAttr(
-                        log.clockIn || "--"
-                    )}"
-                    onchange="
-                        updateAttendance(
-                            '${log.id}',
-                            'clockIn',
-                            this.value
-                        )
-                    "
-                >
-
-            </td>
-
-            <td>
-
-                <input
-                    type="text"
-                    value="${escapeAttr(
-                        log.clockOut || "--"
-                    )}"
-                    onchange="
-                        updateAttendance(
-                            '${log.id}',
-                            'clockOut',
-                            this.value
-                        )
-                    "
-                >
-
-            </td>
-
-            <td>
-                ${duration}
-            </td>
-
-            <td>
-
-                <span class="status-badge">
-                    ${escapeHtml(
-                        log.status || "حاضر"
-                    )}
-                </span>
-
-            </td>
-
-            <td>
-
-                <button
-                    class="delete-button"
-                    onclick="
-                        deleteLog('${log.id}')
-                    "
-                >
-                    حذف
-                </button>
-
-            </td>
-
-        `;
-
-
-        tbody.appendChild(tr);
-
-    });
-}
-
-
-/* =========================================================
-   FILTER
-========================================================= */
-
-function filterAttendanceTable() {
-
-    const search =
-        document
-            .getElementById(
-                "attendanceSearch"
-            )
-            .value
-            .trim()
-            .toLowerCase();
-
-
-    const date =
-        document
-            .getElementById(
-                "attendanceDateFilter"
-            )
-            .value;
-
-
-    const filtered =
-        attendanceLogs.filter(log => {
-
-            const name =
-                String(
-                    log.empName || ""
-                )
-                    .toLowerCase();
-
-
-            const matchesName =
-                !search ||
-                name.includes(search);
-
-
-            const matchesDate =
-                !date ||
-                log.date === date;
-
-
-            return (
-                matchesName &&
-                matchesDate
-            );
-
-        });
-
-
-    renderAttendanceTable(filtered);
-}
-
-
-/* =========================================================
-   UPDATE ATTENDANCE
-========================================================= */
-
-async function updateAttendance(
-    logId,
-    field,
-    value
-) {
-
-    try {
-
-        await db
-            .collection("attendance")
-            .doc(logId)
-            .update({
-
-                [field]:
-                    value.trim(),
-
-                updatedAt:
+                createdAt:
                     firebase.firestore.FieldValue.serverTimestamp()
 
             });
 
-
-        showToast(
-            "تم تحديث السجل.",
-            "success"
+        showMessage(
+            "تمت إضافة الموظف بنجاح."
         );
 
+        setValue("newEmpName", "");
+        setValue("newEmpId", "");
+        setValue("newEmpPhone", "");
+        setValue("newEmpTitle", "");
+
+        await loadEmployees();
+
+        await updateAdminStats();
 
     } catch (error) {
 
         console.error(error);
 
-        showToast(
-            "تعذر تحديث السجل.",
-            "error"
+        showMessage(
+            "تعذر إضافة الموظف."
         );
     }
 }
 
+/* =========================
+   LOAD EMPLOYEES
+   ========================= */
 
-/* =========================================================
-   DELETE ATTENDANCE
-========================================================= */
+async function loadEmployees() {
 
-async function deleteLog(logId) {
-
-    const confirmed =
-        confirm(
-            "هل أنت متأكد من حذف سجل الدوام؟"
-        );
-
-
-    if (!confirmed) return;
-
-
-    try {
-
+    const snapshot =
         await db
-            .collection("attendance")
-            .doc(logId)
-            .delete();
+            .collection("employees")
+            .get();
 
+    employeesCache = [];
 
-        showToast(
-            "تم حذف السجل.",
-            "success"
-        );
+    snapshot.forEach(doc => {
 
+        employeesCache.push({
 
-    } catch (error) {
+            id: doc.id,
 
-        console.error(error);
-
-        showToast(
-            "تعذر حذف السجل.",
-            "error"
-        );
-    }
-}
-
-
-/* =========================================================
-   STATS
-========================================================= */
-
-function updateAttendanceStats() {
-
-    const today =
-        getLocalDateString();
-
-
-    const todayLogs =
-        attendanceLogs.filter(
-            log =>
-                log.date === today
-        );
-
-
-    const present =
-        todayLogs.length;
-
-
-    const active =
-        todayLogs.filter(
-            log =>
-                !log.clockOut ||
-                log.clockOut === "--"
-        ).length;
-
-
-    document
-        .getElementById(
-            "statPresent"
-        )
-        .innerText =
-        present;
-
-
-    document
-        .getElementById(
-            "statActive"
-        )
-        .innerText =
-        active;
-
-
-    document
-        .getElementById(
-            "statRecords"
-        )
-        .innerText =
-        attendanceLogs.length;
-}
-
-
-/* =========================================================
-   PDF
-========================================================= */
-
-async function generatePDFReport() {
-
-    try {
-
-        const {
-            jsPDF
-        } = window.jspdf;
-
-
-        const selectedEmployee =
-            document
-                .getElementById(
-                    "pdfEmpSelect"
-                )
-                .value;
-
-
-        const startDate =
-            document
-                .getElementById(
-                    "pdfStartDate"
-                )
-                .value;
-
-
-        const endDate =
-            document
-                .getElementById(
-                    "pdfEndDate"
-                )
-                .value;
-
-
-        let logs =
-            [...attendanceLogs];
-
-
-        if (
-            selectedEmployee !==
-            "ALL"
-        ) {
-
-            logs =
-                logs.filter(
-                    log =>
-                        log.empId ===
-                        selectedEmployee
-                );
-
-        }
-
-
-        if (startDate) {
-
-            logs =
-                logs.filter(
-                    log =>
-                        log.date >=
-                        startDate
-                );
-
-        }
-
-
-        if (endDate) {
-
-            logs =
-                logs.filter(
-                    log =>
-                        log.date <=
-                        endDate
-                );
-
-        }
-
-
-        if (!logs.length) {
-
-            showToast(
-                "لا توجد سجلات ضمن الفترة المحددة.",
-                "warning"
-            );
-
-            return;
-        }
-
-
-        const doc =
-            new jsPDF({
-                orientation: "landscape"
-            });
-
-
-        doc.setFontSize(18);
-
-        doc.text(
-            "Dawami - Attendance Report",
-            148,
-            15,
-            {
-                align: "center"
-            }
-        );
-
-
-        const tableData =
-            logs.map(log => [
-
-                log.empName || "",
-
-                log.date || "",
-
-                log.clockIn || "--",
-
-                log.clockOut || "--",
-
-                calculateDuration(
-                    log.clockIn,
-                    log.clockOut
-                ),
-
-                log.status || ""
-
-            ]);
-
-
-        doc.autoTable({
-
-            head: [[
-                "Employee",
-                "Date",
-                "Clock In",
-                "Clock Out",
-                "Duration",
-                "Status"
-            ]],
-
-            body:
-                tableData,
-
-            startY: 25,
-
-            styles: {
-                halign: "center",
-
-                fontSize: 9
-            },
-
-            headStyles: {
-                halign: "center"
-            }
+            ...doc.data()
 
         });
 
+    });
 
-        const today =
-            getLocalDateString();
+    updateEmployeeSelect();
 
+    renderEmployeesIfContainerExists();
+}
 
-        doc.save(
-            `Dawami_Attendance_${today}.pdf`
+/* =========================
+   EMPLOYEE SELECT
+   ========================= */
+
+function updateEmployeeSelect() {
+
+    const select =
+        $("pdfEmpSelect");
+
+    if (!select) return;
+
+    select.innerHTML =
+        `<option value="">كل الموظفين</option>`;
+
+    employeesCache
+        .sort((a, b) =>
+            String(a.fullName)
+                .localeCompare(
+                    String(b.fullName),
+                    "ar"
+                )
+        )
+        .forEach(employee => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                employee.id;
+
+            option.textContent =
+                employee.fullName;
+
+            select.appendChild(option);
+
+        });
+}
+
+/* =========================
+   LOAD ATTENDANCE
+   ========================= */
+
+async function loadAttendance() {
+
+    try {
+
+        const snapshot =
+            await db
+                .collection("attendance")
+                .get();
+
+        attendanceCache = [];
+
+        snapshot.forEach(doc => {
+
+            attendanceCache.push({
+
+                id: doc.id,
+
+                ...doc.data()
+
+            });
+
+        });
+
+        attendanceCache.sort(
+            (a, b) => {
+
+                const dateA =
+                    a.date || "";
+
+                const dateB =
+                    b.date || "";
+
+                return dateB.localeCompare(dateA);
+            }
         );
 
-
-        showToast(
-            "تم إنشاء التقرير بنجاح.",
-            "success"
-        );
-
+        renderAttendanceTable();
 
     } catch (error) {
 
         console.error(error);
 
-        showToast(
-            "تعذر إنشاء ملف PDF.",
-            "error"
+        showMessage(
+            "تعذر تحميل سجلات الحضور."
         );
     }
 }
 
+/* =========================
+   CALCULATE EMPLOYEE TOTAL
+   ========================= */
 
-/* =========================================================
-   ADMIN DATE
-========================================================= */
+function getEmployeeTotalHours(employeeId) {
 
-function updateAdminDate() {
+    let total = 0;
 
-    const element =
-        document.getElementById(
-            "adminCurrentDate"
-        );
+    attendanceCache
+        .filter(
+            record =>
+                record.employeeId === employeeId
+        )
+        .forEach(record => {
 
+            if (
+                typeof record.netWorkHours ===
+                "number"
+            ) {
 
-    if (!element) return;
+                total +=
+                    record.netWorkHours;
 
+            } else if (
+                record.clockInTimestamp &&
+                record.clockOutTimestamp
+            ) {
 
-    const now =
-        new Date();
+                const start =
+                    record.clockInTimestamp.toDate();
 
+                const end =
+                    record.clockOutTimestamp.toDate();
 
-    element.innerText =
-        now.toLocaleDateString(
-            "ar-PS",
-            {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric"
+                const breakMinutes =
+                    record.totalBreakMinutes || 0;
+
+                const hours =
+                    millisecondsToHours(
+                        end - start
+                    ) -
+                    breakMinutes / 60;
+
+                total +=
+                    Math.max(0, hours);
             }
-        );
+        });
+
+    return total;
 }
 
+/* =========================
+   CALCULATE MONTHLY HOURS
+   ========================= */
 
-/* =========================================================
-   TOAST
-========================================================= */
+function getEmployeeMonthlyHours(employeeId) {
 
-function showToast(
-    message,
-    type = "success"
-) {
+    const month =
+        formatDate(new Date())
+            .substring(0, 7);
+
+    let total = 0;
+
+    attendanceCache
+        .filter(record => {
+
+            return (
+                record.employeeId === employeeId &&
+                String(record.date || "")
+                    .startsWith(month)
+            );
+
+        })
+        .forEach(record => {
+
+            total +=
+                Number(
+                    record.netWorkHours || 0
+                );
+        });
+
+    return total;
+}
+
+/* =========================
+   TOTAL OVERTIME
+   ========================= */
+
+function getEmployeeOvertimeHours(employeeId) {
+
+    let total = 0;
+
+    attendanceCache
+        .filter(
+            record =>
+                record.employeeId === employeeId
+        )
+        .forEach(record => {
+
+            total +=
+                Number(
+                    record.overtimeHours || 0
+                );
+        });
+
+    return total;
+}
+
+/* =========================
+   RENDER EMPLOYEE TOTALS
+   ========================= */
+
+function renderEmployeesIfContainerExists() {
 
     const container =
-        document.getElementById(
-            "toastContainer"
-        );
-
+        $("employeesList");
 
     if (!container) return;
 
+    container.innerHTML = "";
 
-    const toast =
-        document.createElement(
-            "div"
-        );
+    employeesCache.forEach(employee => {
 
+        const totalHours =
+            getEmployeeTotalHours(
+                employee.id
+            );
 
-    toast.className =
-        `toast ${type}`;
+        const monthlyHours =
+            getEmployeeMonthlyHours(
+                employee.id
+            );
 
+        const overtime =
+            getEmployeeOvertimeHours(
+                employee.id
+            );
 
-    const icon =
-        type === "success"
-            ? "✓"
-            : type === "error"
-                ? "!"
-                : "⚠";
+        const div =
+            document.createElement("div");
 
+        div.className =
+            "employee-summary-card";
 
-    toast.innerHTML = `
-        <strong>${icon}</strong>
-        <span>${escapeHtml(message)}</span>
-    `;
+        div.innerHTML = `
 
+            <div class="employee-summary-header">
 
-    container.appendChild(toast);
+                <div>
+                    <strong>
+                        ${escapeHtml(employee.fullName)}
+                    </strong>
 
+                    <small>
+                        ${escapeHtml(employee.jobTitle || "")}
+                    </small>
+                </div>
 
-    setTimeout(() => {
+            </div>
 
-        toast.remove();
+            <div class="employee-summary-stats">
 
-    }, 3500);
+                <div>
+                    <span>إجمالي الساعات</span>
+                    <strong>
+                        ${formatHours(totalHours)}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>هذا الشهر</span>
+                    <strong>
+                        ${formatHours(monthlyHours)}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>الإضافي</span>
+                    <strong>
+                        ${formatHours(overtime)}
+                    </strong>
+                </div>
+
+            </div>
+        `;
+
+        container.appendChild(div);
+    });
 }
 
+/* =========================
+   ATTENDANCE TABLE
+   ========================= */
 
-/* =========================================================
-   SECURITY HELPERS
-========================================================= */
+function renderAttendanceTable() {
+
+    const tbody =
+        $("attendanceTableBody");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    attendanceCache
+        .slice(0, 200)
+        .forEach(record => {
+
+            const tr =
+                document.createElement("tr");
+
+            const total =
+                Number(
+                    record.netWorkHours || 0
+                );
+
+            const overtime =
+                Number(
+                    record.overtimeHours || 0
+                );
+
+            tr.innerHTML = `
+
+                <td>
+                    ${escapeHtml(
+                        record.employeeName || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${record.date || "-"}
+                </td>
+
+                <td>
+                    ${record.clockIn || "-"}
+                </td>
+
+                <td>
+                    ${record.clockOut || "-"}
+                </td>
+
+                <td>
+                    ${record.totalBreakMinutes || 0}
+                    دقيقة
+                </td>
+
+                <td>
+                    <strong>
+                        ${formatHours(total)}
+                    </strong>
+                </td>
+
+                <td>
+                    ${formatHours(overtime)}
+                </td>
+
+                <td>
+                    ${
+                        record.status === "open"
+                        ? "دوام مفتوح"
+                        : "مكتمل"
+                    }
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+}
+
+/* =========================
+   ADMIN STATISTICS
+   ========================= */
+
+async function updateAdminStats() {
+
+    const employees =
+        employeesCache.length;
+
+    const today =
+        formatDate(new Date());
+
+    const todayRecords =
+        attendanceCache.filter(
+            r => r.date === today
+        );
+
+    const totalRecords =
+        attendanceCache.length;
+
+    setText(
+        "totalEmployeesStat",
+        employees
+    );
+
+    setText(
+        "todayAttendanceStat",
+        todayRecords.length
+    );
+
+    setText(
+        "totalRecordsStat",
+        totalRecords
+    );
+}
+
+/* =========================
+   PDF REPORT
+   ========================= */
+
+async function generatePDFReport() {
+
+    const employeeId =
+        getValue("pdfEmpSelect");
+
+    const startDate =
+        getValue("pdfStartDate");
+
+    const endDate =
+        getValue("pdfEndDate");
+
+    let records =
+        [...attendanceCache];
+
+    if (employeeId) {
+
+        records =
+            records.filter(
+                r =>
+                    r.employeeId ===
+                    employeeId
+            );
+    }
+
+    if (startDate) {
+
+        records =
+            records.filter(
+                r =>
+                    String(r.date || "") >=
+                    startDate
+            );
+    }
+
+    if (endDate) {
+
+        records =
+            records.filter(
+                r =>
+                    String(r.date || "") <=
+                    endDate
+            );
+    }
+
+    records.sort(
+        (a, b) =>
+            String(a.date)
+                .localeCompare(
+                    String(b.date)
+                )
+    );
+
+    if (!records.length) {
+
+        showMessage(
+            "لا توجد سجلات ضمن الفترة المحددة."
+        );
+
+        return;
+    }
+
+    const employee =
+        employeesCache.find(
+            e => e.id === employeeId
+        );
+
+    const totalHours =
+        records.reduce(
+            (sum, r) =>
+                sum +
+                Number(
+                    r.netWorkHours || 0
+                ),
+            0
+        );
+
+    const totalOvertime =
+        records.reduce(
+            (sum, r) =>
+                sum +
+                Number(
+                    r.overtimeHours || 0
+                ),
+            0
+        );
+
+    const totalBreak =
+        records.reduce(
+            (sum, r) =>
+                sum +
+                Number(
+                    r.totalBreakMinutes || 0
+                ),
+            0
+        );
+
+    const {
+        jsPDF
+    } = window.jspdf;
+
+    const pdf =
+        new jsPDF({
+            orientation: "landscape"
+        });
+
+    pdf.setFontSize(18);
+
+    pdf.text(
+        "DAWAMI - Attendance Report",
+        148,
+        15,
+        {
+            align: "center"
+        }
+    );
+
+    pdf.setFontSize(11);
+
+    pdf.text(
+        `Employee: ${employee?.fullName || "All Employees"}`,
+        14,
+        25
+    );
+
+    pdf.text(
+        `From: ${startDate || "-"}`,
+        14,
+        32
+    );
+
+    pdf.text(
+        `To: ${endDate || "-"}`,
+        14,
+        39
+    );
+
+    pdf.text(
+        `Total Hours: ${totalHours.toFixed(2)}`,
+        14,
+        46
+    );
+
+    pdf.text(
+        `Overtime: ${totalOvertime.toFixed(2)}`,
+        90,
+        46
+    );
+
+    pdf.text(
+        `Break Minutes: ${totalBreak}`,
+        165,
+        46
+    );
+
+    const tableData =
+        records.map(record => [
+
+            record.employeeName || "-",
+
+            record.date || "-",
+
+            record.clockIn || "-",
+
+            record.clockOut || "-",
+
+            `${record.totalBreakMinutes || 0} min`,
+
+            Number(
+                record.netWorkHours || 0
+            ).toFixed(2),
+
+            Number(
+                record.overtimeHours || 0
+            ).toFixed(2)
+
+        ]);
+
+    pdf.autoTable({
+
+        startY: 53,
+
+        head: [[
+            "Employee",
+            "Date",
+            "Clock In",
+            "Clock Out",
+            "Break",
+            "Net Hours",
+            "Overtime"
+        ]],
+
+        body: tableData,
+
+        styles: {
+            fontSize: 8
+        },
+
+        headStyles: {
+            fontStyle: "bold"
+        }
+    });
+
+    pdf.save(
+        `dawami-report-${formatDate(new Date())}.pdf`
+    );
+}
+
+/* =========================
+   LOGOUT
+   ========================= */
+
+function logout() {
+
+    currentEmployee =
+        null;
+
+    currentEmployeeId =
+        null;
+
+    isAdmin =
+        false;
+
+    localStorage.removeItem(
+        "dawami_employee_id"
+    );
+
+    localStorage.removeItem(
+        "dawami_admin"
+    );
+
+    localStorage.removeItem(
+        "dawami_company_verified"
+    );
+
+    hideElement("employeeDashboard");
+    hideElement("adminDashboard");
+    hideElement("employeeRegisterSection");
+    hideElement("adminLoginSection");
+
+    showElement("companyCodeSection");
+}
+
+/* =========================
+   BACK TO COMPANY LOGIN
+   ========================= */
+
+function showCompanyCodeSection() {
+
+    hideElement("adminLoginSection");
+    hideElement("adminDashboard");
+
+    showElement("companyCodeSection");
+}
+
+/* =========================
+   ESCAPE HTML
+   ========================= */
 
 function escapeHtml(value) {
 
     return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
+/* =========================
+   AUTO LOGIN
+   ========================= */
 
-function escapeAttr(value) {
+async function restoreSession() {
 
-    return escapeHtml(value)
-        .replaceAll("\n", "")
-        .replaceAll("\r", "");
-}
+    const employeeId =
+        localStorage.getItem(
+            "dawami_employee_id"
+        );
 
+    const admin =
+        localStorage.getItem(
+            "dawami_admin"
+        );
 
-/* =========================================================
-   LOGOUT
-========================================================= */
+    if (admin === "true") {
 
-function logout() {
+        isAdmin = true;
 
-    localStorage.removeItem(
-        "dawami_current_user"
-    );
+        try {
 
+            const doc =
+                await db
+                    .collection("company")
+                    .doc("settings")
+                    .get();
 
-    currentEmployee = null;
+            if (doc.exists) {
 
+                companySettings =
+                    doc.data();
 
-    if (unsubscribeAttendance) {
+                openAdminDashboard();
+            }
 
-        unsubscribeAttendance();
+        } catch (error) {
 
-        unsubscribeAttendance = null;
-    }
-
-
-    location.reload();
-}
-
-
-/* =========================================================
-   AUTO UPDATE EMPLOYEE STATUS
-========================================================= */
-
-setInterval(
-    () => {
-
-        if (
-            currentEmployee &&
-            !document
-                .getElementById(
-                    "employeeDashboard"
-                )
-                ?.classList.contains(
-                    "hidden"
-                )
-        ) {
-
-            updateTodayAttendance();
+            console.error(error);
 
         }
 
-    },
-    60000
+        return;
+    }
+
+    if (employeeId) {
+
+        try {
+
+            const doc =
+                await db
+                    .collection("employees")
+                    .doc(employeeId)
+                    .get();
+
+            if (doc.exists) {
+
+                currentEmployeeId =
+                    employeeId;
+
+                currentEmployee = {
+
+                    id: employeeId,
+
+                    ...doc.data()
+
+                };
+
+                openEmployeeDashboard();
+
+            }
+
+        } catch (error) {
+
+            console.error(error);
+
+            localStorage.removeItem(
+                "dawami_employee_id"
+            );
+        }
+    }
+}
+
+/* =========================
+   INITIALIZATION
+   ========================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+        try {
+
+            await restoreSession();
+
+        } catch (error) {
+
+            console.error(
+                "Dawami initialization error:",
+                error
+            );
+        }
+    }
 );
-```
