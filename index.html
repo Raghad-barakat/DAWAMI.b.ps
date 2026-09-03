@@ -1,169 +1,47 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق دوامي - نظام إدارة وحضور الموظفين السحابي</title>
-    <link rel="stylesheet" href="styles.css">
-    
-    <!-- مكتبات Firebase السحابية -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    
-    <!-- مكتبة طباعة تقارير PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دوامي - تسجيل الموظف</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="container">
-        <!-- شاشة إدخال كود الشركة -->
-        <div id="companyCodeSection" class="card">
-            <h2>تسجيل الدخول - تطبيق دوامي</h2>
-            <p>يرجى إدخال كود الشركة للبدء</p>
-            <div class="input-group">
-                <input type="text" id="companyCodeInput" placeholder="أدخل كود الشركة (مثال: COMP123)">
-                <button onclick="verifyCompanyCode()">دخول</button>
-            </div>
-            <div class="admin-link">
-                <button class="btn-secondary" onclick="showAdminLogin()">دخول المدير (الأدمن)</button>
-            </div>
-            <p id="codeError" class="error-msg"></p>
-        </div>
+<div class="container">
+  <!-- شاشة تسجيل الدخول للكود -->
+  <div id="loginSection" class="card" style="max-width: 400px; margin: 40px auto; text-align: center;">
+    <h2>تسجيل الدخول - دوامي</h2>
+    <p style="margin-bottom: 15px; color: #64748b;">أدخل الكود الخاص بك للمتابعة</p>
+    
+    <input type="text" id="employeeCodeInput" placeholder="أدخل كود الموظف (مثال: 1001)" class="form-input">
+    <button class="btn btn-primary" onclick="loginWithCode()" style="width: 100%; margin-top: 10px;">دخول</button>
+    
+    <p id="loginError" style="color: var(--danger-color); font-size: 0.85rem; margin-top: 10px; display: none;"></p>
+  </div>
 
-        <!-- شاشة استكمال بيانات الموظف لأول مرة -->
-        <div id="employeeRegistrationSection" class="card hidden">
-            <h2>إكمال بيانات الموظف</h2>
-            <p>يرجى تعبئة البيانات التالية لمرة واحدة لتسجيل حسابك في الشركة</p>
-            <form id="empRegisterForm" onsubmit="saveEmployeeProfile(event)">
-                <input type="text" id="empFullName" placeholder="الاسم الرباعي" required>
-                <input type="text" id="empNationalId" placeholder="رقم الهوية" required>
-                <input type="tel" id="empPhone" placeholder="رقم الهاتف" required>
-                <input type="text" id="empJobTitle" placeholder="المسمى الوظيفي" required>
-                <button type="submit" class="btn-success">حفظ ودخول للنظام</button>
-            </form>
-        </div>
+  <!-- لوحة الموظف الرئيسية (تظهر بعد الدخول وتتذكر الموظف) -->
+  <div id="dashboardSection" class="card" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-align: center;">
+      <h2>مواظبة الدوام اليومي</h2>
+      <button class="btn btn-logout no-print" onclick="logout()">تسجيل الخروج</button>
+    </div>
+    
+    <p style="margin-top: 10px;">أهلاً بك، <strong id="employeeName"></strong></p>
+    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e2e8f0;">
 
-        <!-- شاشة الموظف الرئيسية (تسجيل الحضور والانصراف) -->
-        <div id="employeeDashboard" class="card hidden">
-            <div class="user-header">
-                <h3>أهلاً بك، <span id="welcomeEmpName"></span></h3>
-                <span class="badge" id="welcomeEmpTitle"></span>
-            </div>
-
-            <div class="location-status card-inner">
-                <p>📍 موقعك الحالي: <span id="locationStatus">جاري فحص الموقع الجغرافي...</span></p>
-            </div>
-
-            <div class="action-buttons">
-                <button id="btnClockIn" class="btn-success" onclick="clockIn()">تسجيل حضور 🟢</button>
-                <button id="btnClockOut" class="btn-danger" onclick="clockOut()">تسجيل انصراف 🔴</button>
-            </div>
-
-            <button class="btn-outline" onclick="logout()">تسجيل خروج</button>
-        </div>
-
-        <!-- شاشة تسجيل دخول الأدمن -->
-        <div id="adminLoginSection" class="card hidden">
-            <h2>دخول حساب الأدمن</h2>
-            <input type="password" id="adminPasswordInput" placeholder="كلمة مرور الأدمن (الافتراضية: admin)">
-            <button onclick="loginAdmin()">دخول</button>
-            <button class="btn-secondary" onclick="showCompanyCodeSection()">رجوع</button>
-            <p id="adminLoginError" class="error-msg"></p>
-        </div>
-
-        <!-- لوحة تحكم الأدمن -->
-        <div id="adminDashboard" class="card hidden wide">
-            <div class="admin-header">
-                <h2>لوحة تحكم المدير (الأدمن)</h2>
-                <button class="btn-danger" onclick="logout()">تسجيل خروج</button>
-            </div>
-
-            <!-- إعدادات الشركة والموقع الجغرافي -->
-            <div class="card-inner">
-                <h3>⚙️ إعدادات الشركة والموقع الجغرافي</h3>
-                <div class="grid-inputs">
-                    <div>
-                        <label>كود الشركة:</label>
-                        <input type="text" id="settingCompanyCode">
-                    </div>
-                    <div>
-                        <label>كلمة سر الأدمن:</label>
-                        <input type="password" id="settingAdminPassword">
-                    </div>
-                    <div>
-                        <label>خط العرض (Latitude):</label>
-                        <input type="number" step="any" id="settingLat">
-                    </div>
-                    <div>
-                        <label>خط الطول (Longitude):</label>
-                        <input type="number" step="any" id="settingLng">
-                    </div>
-                    <div>
-                        <label>النطاق المسموح (بالمتر):</label>
-                        <input type="number" id="settingRadius">
-                    </div>
-                </div>
-                <button class="btn-secondary" onclick="getCurrentLocationForAdmin()">تحديد موقعي الحالي كـ موقع للشركة📍</button>
-                <button class="btn-success" onclick="saveCompanySettings()">حفظ الإعدادات السحابية</button>
-            </div>
-
-            <!-- إضافة موظف جديد -->
-            <div class="card-inner">
-                <h3>👤 إضافة موظف جديد يدوياً</h3>
-                <form onsubmit="adminAddEmployee(event)" class="grid-inputs">
-                    <input type="text" id="newEmpName" placeholder="الاسم الرباعي" required>
-                    <input type="text" id="newEmpId" placeholder="رقم الهوية" required>
-                    <input type="tel" id="newEmpPhone" placeholder="رقم الهاتف" required>
-                    <input type="text" id="newEmpTitle" placeholder="المسمى الوظيفي" required>
-                    <button type="submit" class="btn-primary">إضافة الموظف</button>
-                </form>
-            </div>
-
-            <!-- تقارير واستخراج PDF -->
-            <div class="card-inner">
-                <h3>📄 تصدير تقرير الدوام (PDF)</h3>
-                <div class="grid-inputs">
-                    <div>
-                        <label>اختر الموظف:</label>
-                        <select id="pdfEmpSelect"></select>
-                    </div>
-                    <div>
-                        <label>من تاريخ:</label>
-                        <input type="date" id="pdfStartDate">
-                    </div>
-                    <div>
-                        <label>إلى تاريخ:</label>
-                        <input type="date" id="pdfEndDate">
-                    </div>
-                </div>
-                <button class="btn-primary" onclick="generatePDFReport()">طباعة تقرير PDF 🖨️</button>
-            </div>
-
-            <!-- جدول سجلات دوام الموظفين مع إمكانية التعديل -->
-            <div class="card-inner">
-                <h3>📊 سجلات دوام الموظفين (مباشر من الهواتف مع إمكانية التعديل)</h3>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>اسم الموظف</th>
-                                <th>التاريخ</th>
-                                <th>وقت الحضور</th>
-                                <th>وقت الانصراف</th>
-                                <th>الحالة</th>
-                                <th>إجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendanceTableBody">
-                            <!-- ملء ديناميكي -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button id="breakBtn" class="btn btn-break" onclick="toggleBreak()">بدء الاستراحة (Break)</button>
+      <button class="btn btn-print no-print" onclick="window.print()">طباعة تقرير اليوم</button>
     </div>
 
-    <script src="app.js"></script>
+    <div id="statusBox" style="padding: 12px; background: #f1f5f9; border-radius: 8px;">
+      <p>حالة الدوام: <strong id="currentStatus" style="color: var(--success-color);">على رأس العمل</strong></p>
+      <p id="breakLog">وقت الاستراحة المسجل: لا يوجد</p>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
