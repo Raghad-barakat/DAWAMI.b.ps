@@ -1,12 +1,11 @@
-// --- 1. إعدادات السحابة Firebase الخاصة بمشروعك DAWAMIbps ---
+// --- 1. إعدادات السحابة Firebase ---
 const firebaseConfig = {
-    apiKey: "AIzaSyCqERoBLSxpk_FTvTepbyTQd6C2aT9vNts",
-    authDomain: "dawamibps.firebaseapp.com",
-    projectId: "dawamibps",
-    storageBucket: "dawamibps.firebasestorage.app",
-    messagingSenderId: "949392669004",
-    appId: "1:949392669004:web:89b8c65e631662c6d2b7e9",
-    measurementId: "G-ZMECR36J4S"
+    apiKey: "ضع_هنا_apiKey_الخاص_بك",
+    authDomain: "ضع_هنا_authDomain",
+    projectId: "ضع_هنا_projectId",
+    storageBucket: "ضع_هنا_storageBucket",
+    messagingSenderId: "ضع_هنا_messagingSenderId",
+    appId: "ضع_هنا_appId"
 };
 
 // تهيئة Firebase
@@ -21,6 +20,7 @@ window.onload = function() {
 };
 
 async function initApp() {
+    // جلب الإعدادات الأولية من السحابة
     try {
         const doc = await db.collection('settings').doc('company').get();
         if (doc.exists) {
@@ -44,9 +44,9 @@ async function verifyCompanyCode() {
 
     try {
         const doc = await db.collection('settings').doc('company').get();
-        const settings = doc.exists ? doc.data() : cachedSettings;
+        const settings = doc.data() || cachedSettings;
 
-        if (inputCode.toUpperCase() === (settings.companyCode || "COMP123").trim().toUpperCase()) {
+        if (inputCode.toUpperCase() === settings.companyCode.trim().toUpperCase()) {
             errorElem.innerText = "";
             document.getElementById('companyCodeSection').classList.add('hidden');
             document.getElementById('employeeRegistrationSection').classList.remove('hidden');
@@ -54,7 +54,7 @@ async function verifyCompanyCode() {
             errorElem.innerText = "❌ كود الشركة غير صحيح! يرجى التأكد وإعادة المحاولة.";
         }
     } catch(err) {
-        errorElem.innerText = "حدث خطأ في الاتصال بقاعدة البيانات. تأكد من تفعيل Firestore Database.";
+        errorElem.innerText = "حدث خطأ في الاتصال بقاعدة البيانات. تأكد من إعدادات Firebase.";
     }
 }
 
@@ -117,10 +117,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 async function checkEmployeeLocation(callback) {
     const statusElem = document.getElementById('locationStatus');
     const doc = await db.collection('settings').doc('company').get();
-    const settings = doc.exists ? doc.data() : cachedSettings;
+    const settings = doc.data() || cachedSettings;
 
     if (!navigator.geolocation) {
-        statusElem.innerText = "⚠️ خاصية تحديد الموقع غير مدعومة في متصفحك.";
+        statusElem.innerText = "⚠️ خاصية تحديد الموقع غير مدعومة.";
         return;
     }
 
@@ -130,16 +130,16 @@ async function checkEmployeeLocation(callback) {
             const userLng = pos.coords.longitude;
             const distance = calculateDistance(userLat, userLng, settings.lat, settings.lng);
 
-            if (distance <= (settings.radiusMeters || 100)) {
-                statusElem.innerHTML = `<span style="color:green; font-weight:bold;">✅ أنت داخل نطاق الشركة (${Math.round(distance)} متر)</span>`;
+            if (distance <= settings.radiusMeters) {
+                statusElem.innerHTML = `<span style="color:green;">✅ أنت داخل نطاق الشركة (${Math.round(distance)} متر)</span>`;
                 if(callback) callback(true);
             } else {
-                statusElem.innerHTML = `<span style="color:red; font-weight:bold;">❌ أنت خارج نطاق الشركة (${Math.round(distance)} متر من ${settings.radiusMeters || 100} متر المسموحة)</span>`;
+                statusElem.innerHTML = `<span style="color:red;">❌ أنت خارج نطاق الشركة (${Math.round(distance)} متر من ${settings.radiusMeters} متر المسموحة)</span>`;
                 if(callback) callback(false);
             }
         },
         () => {
-            statusElem.innerText = "⚠️ يرجى تفعيل الـ GPS ومشاركة الموقع للتحقق من وجودك بالشركة.";
+            statusElem.innerText = "⚠️ يرجى تفعيل الـ GPS في هاتفك لتحديد الموقع.";
             if(callback) callback(false);
         }
     );
@@ -214,7 +214,7 @@ async function clockOut() {
     });
 }
 
-// --- 6. لوحة تحكم الأدمن والصلاحيات ---
+// --- 6. لوحة تحكم الأدمن ---
 function showAdminLogin() {
     document.getElementById('companyCodeSection').classList.add('hidden');
     document.getElementById('adminLoginSection').classList.remove('hidden');
@@ -228,9 +228,9 @@ function showCompanyCodeSection() {
 async function loginAdmin() {
     const pass = document.getElementById('adminPasswordInput').value;
     const doc = await db.collection('settings').doc('company').get();
-    const settings = doc.exists ? doc.data() : cachedSettings;
+    const settings = doc.data() || cachedSettings;
 
-    if (pass === (settings.adminPassword || "admin")) {
+    if (pass === settings.adminPassword) {
         document.getElementById('adminLoginSection').classList.add('hidden');
         document.getElementById('adminDashboard').classList.remove('hidden');
         loadAdminData();
@@ -243,13 +243,13 @@ async function loadAdminData() {
     const doc = await db.collection('settings').doc('company').get();
     if (doc.exists) {
         const s = doc.data();
-        document.getElementById('settingCompanyCode').value = s.companyCode || "COMP123";
-        document.getElementById('settingAdminPassword').value = s.adminPassword || "admin";
+        document.getElementById('settingCompanyCode').value = s.companyCode || "";
         document.getElementById('settingLat').value = s.lat || "";
         document.getElementById('settingLng').value = s.lng || "";
-        document.getElementById('settingRadius').value = s.radiusMeters || 100;
+        document.getElementById('settingRadius').value = s.radiusMeters || "";
     }
 
+    // جلب قائمة الموظفين
     const empSnap = await db.collection('employees').get();
     const select = document.getElementById('pdfEmpSelect');
     select.innerHTML = `<option value="ALL">جميع الموظفين</option>`;
@@ -258,6 +258,7 @@ async function loadAdminData() {
         select.innerHTML += `<option value="${d.id}">${emp.fullName} (${emp.jobTitle})</option>`;
     });
 
+    // استماع مباشر لسجلات جميع الهواتف
     db.collection('attendance').onSnapshot(snapshot => {
         const tbody = document.getElementById('attendanceTableBody');
         tbody.innerHTML = "";
@@ -283,7 +284,7 @@ function getCurrentLocationForAdmin() {
         navigator.geolocation.getCurrentPosition(pos => {
             document.getElementById('settingLat').value = pos.coords.latitude;
             document.getElementById('settingLng').value = pos.coords.longitude;
-            alert("تم التقاط موقعك الحالي كـ موقع للشركة بنجاح!");
+            alert("تم التقاط موقعك الحالي!");
         });
     }
 }
@@ -291,7 +292,6 @@ function getCurrentLocationForAdmin() {
 async function saveCompanySettings() {
     const newSettings = {
         companyCode: document.getElementById('settingCompanyCode').value.trim(),
-        adminPassword: document.getElementById('settingAdminPassword').value.trim(),
         lat: parseFloat(document.getElementById('settingLat').value),
         lng: parseFloat(document.getElementById('settingLng').value),
         radiusMeters: parseInt(document.getElementById('settingRadius').value)
