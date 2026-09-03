@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق دوامي - نظام الحضور السحابي</title>
+    <title>تطبيق دوامي - نظام إدارة وحضور الموظفين السحابي</title>
     <link rel="stylesheet" href="styles.css">
+    
     <!-- مكتبات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <!-- مكتبة PDF -->
+    
+    <!-- مكتبة طباعة تقارير PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -18,7 +20,7 @@
         <!-- شاشة إدخال كود الشركة -->
         <div id="companyCodeSection" class="card">
             <h2>تسجيل الدخول - تطبيق دوامي</h2>
-            <p>أدخل كود الشركة للدخول</p>
+            <p>يرجى إدخال كود الشركة للبدء</p>
             <div class="input-group">
                 <input type="text" id="companyCodeInput" placeholder="أدخل كود الشركة (مثال: COMP123)">
                 <button onclick="verifyCompanyCode()">دخول</button>
@@ -29,20 +31,20 @@
             <p id="codeError" class="error-msg"></p>
         </div>
 
-        <!-- شاشة إدخال بيانات الموظف (المرة الأولى على هاتف الموظف) -->
+        <!-- شاشة استكمال بيانات الموظف لأول مرة -->
         <div id="employeeRegistrationSection" class="card hidden">
             <h2>إكمال بيانات الموظف</h2>
-            <p>يرجى إدخال بياناتك لمرة واحدة فقط لتسجيل حسابك في الشركة</p>
+            <p>يرجى تعبئة البيانات التالية لمرة واحدة لتسجيل حسابك في الشركة</p>
             <form id="empRegisterForm" onsubmit="saveEmployeeProfile(event)">
                 <input type="text" id="empFullName" placeholder="الاسم الرباعي" required>
                 <input type="text" id="empNationalId" placeholder="رقم الهوية" required>
                 <input type="tel" id="empPhone" placeholder="رقم الهاتف" required>
                 <input type="text" id="empJobTitle" placeholder="المسمى الوظيفي" required>
-                <button type="submit">حفظ ودخول للنظام</button>
+                <button type="submit" class="btn-success">حفظ ودخول للنظام</button>
             </form>
         </div>
 
-        <!-- شاشة الموظف الرئيسية -->
+        <!-- شاشة الموظف الرئيسية (تسجيل الحضور والانصراف) -->
         <div id="employeeDashboard" class="card hidden">
             <div class="user-header">
                 <h3>أهلاً بك، <span id="welcomeEmpName"></span></h3>
@@ -61,10 +63,10 @@
             <button class="btn-outline" onclick="logout()">تسجيل خروج</button>
         </div>
 
-        <!-- شاشة دخول الأدمن -->
+        <!-- شاشة تسجيل دخول الأدمن -->
         <div id="adminLoginSection" class="card hidden">
             <h2>دخول حساب الأدمن</h2>
-            <input type="password" id="adminPasswordInput" placeholder="كلمة مرور الأدمن">
+            <input type="password" id="adminPasswordInput" placeholder="كلمة مرور الأدمن (الافتراضية: admin)">
             <button onclick="loginAdmin()">دخول</button>
             <button class="btn-secondary" onclick="showCompanyCodeSection()">رجوع</button>
             <p id="adminLoginError" class="error-msg"></p>
@@ -77,13 +79,17 @@
                 <button class="btn-danger" onclick="logout()">تسجيل خروج</button>
             </div>
 
-            <!-- إعدادات الشركة والموقع -->
+            <!-- إعدادات الشركة والموقع الجغرافي -->
             <div class="card-inner">
                 <h3>⚙️ إعدادات الشركة والموقع الجغرافي</h3>
                 <div class="grid-inputs">
                     <div>
                         <label>كود الشركة:</label>
                         <input type="text" id="settingCompanyCode">
+                    </div>
+                    <div>
+                        <label>كلمة سر الأدمن:</label>
+                        <input type="password" id="settingAdminPassword">
                     </div>
                     <div>
                         <label>خط العرض (Latitude):</label>
@@ -98,13 +104,13 @@
                         <input type="number" id="settingRadius">
                     </div>
                 </div>
-                <button onclick="getCurrentLocationForAdmin()">تحديد موقعي الحالي كـ موقع للشركة📍</button>
+                <button class="btn-secondary" onclick="getCurrentLocationForAdmin()">تحديد موقعي الحالي كـ موقع للشركة📍</button>
                 <button class="btn-success" onclick="saveCompanySettings()">حفظ الإعدادات السحابية</button>
             </div>
 
             <!-- إضافة موظف جديد -->
             <div class="card-inner">
-                <h3>👤 إضافة موظف جديد</h3>
+                <h3>👤 إضافة موظف جديد يدوياً</h3>
                 <form onsubmit="adminAddEmployee(event)" class="grid-inputs">
                     <input type="text" id="newEmpName" placeholder="الاسم الرباعي" required>
                     <input type="text" id="newEmpId" placeholder="رقم الهوية" required>
@@ -114,7 +120,7 @@
                 </form>
             </div>
 
-            <!-- استخراج PDF -->
+            <!-- تقارير واستخراج PDF -->
             <div class="card-inner">
                 <h3>📄 تصدير تقرير الدوام (PDF)</h3>
                 <div class="grid-inputs">
@@ -134,9 +140,9 @@
                 <button class="btn-primary" onclick="generatePDFReport()">طباعة تقرير PDF 🖨️</button>
             </div>
 
-            <!-- جدول الحضور والتعديل المباشر -->
+            <!-- جدول سجلات دوام الموظفين مع إمكانية التعديل -->
             <div class="card-inner">
-                <h3>📊 سجلات دوام جميع الموظفين (مباشر من كل الهواتف)</h3>
+                <h3>📊 سجلات دوام الموظفين (مباشر من الهواتف مع إمكانية التعديل)</h3>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -150,7 +156,7 @@
                             </tr>
                         </thead>
                         <tbody id="attendanceTableBody">
-                            <!-- تتحدث تلقائياً -->
+                            <!-- ملء ديناميكي -->
                         </tbody>
                     </table>
                 </div>
