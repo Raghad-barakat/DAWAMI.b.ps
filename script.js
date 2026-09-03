@@ -1,4 +1,4 @@
-// البيانات الأصلية الافتراضية
+
 const defaultEmployees = [
   { code: "1001", id: 1, name: "زياد فتحي احمد حسن", nationalId: "401000001", phone: "0599000001", salary: "5500", rate: "0.00", status: "على رأس العمل", breakTime: "0 دقيقة" },
   { code: "1002", id: 2, name: "عهد جمعه فؤاد سمحان", nationalId: "401000002", phone: "0599000002", salary: "6000", rate: "0.00", status: "على رأس العمل", breakTime: "0 دقيقة" },
