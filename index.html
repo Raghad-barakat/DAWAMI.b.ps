@@ -3,48 +3,415 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام دوامي - تسجيل الدخول والدوام</title>
-  <link rel="stylesheet" href="style.css">
+  <title>نظام دوامي المتكامل</title>
+  <style>
+    :root {
+      --primary-color: #1a56db;
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-color: #1f2937;
+      --success-color: #10b981;
+      --warning-color: #d97706;
+      --danger-color: #ef4444;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 15px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border: none;
+      background: #e5e7eb;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      text-align: right;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-primary { background-color: var(--primary-color); color: white; width: 100%; }
+    .btn-logout { background-color: var(--danger-color); color: white; }
+    .btn-warning { background-color: var(--warning-color); color: white; width: 100%; font-size: 16px; }
+    .btn-warning.active { background-color: var(--success-color); }
+    .btn-print { background-color: #4b5563; color: white; }
+    .btn-edit { background-color: #3b82f6; color: white; padding: 6px 12px; font-size: 13px; }
+
+    .status-box {
+      background: #f9fafb;
+      border-right: 4px solid var(--primary-color);
+      padding: 16px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+
+    .error-msg {
+      color: var(--danger-color);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .table-container { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    th { background-color: #f9fafb; font-weight: bold; }
+
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .status-working { background-color: #d1fae5; color: #065f46; }
+    .status-break { background-color: #fef3c7; color: #92400e; }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 450px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-save { background-color: var(--success-color); color: white; flex: 1; }
+    .btn-cancel { background-color: var(--danger-color); color: white; flex: 1; }
+
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- شاشة تسجيل الدخول -->
-  <div id="loginSection" class="card">
-    <h2>تسجيل دخول الموظف</h2>
-    <p class="subtitle">أدخل الكود الخاص بك للدخول إلى نظام الدوام</p>
-    
-    <div class="form-group">
-      <label for="employeeCodeInput">كود الموظف:</label>
-      <input type="text" id="employeeCodeInput" placeholder="أدخل الكود (مثال: 1001)" autocomplete="off">
-    </div>
-
-    <div id="loginError" class="error-msg" style="display: none;"></div>
-
-    <button class="btn btn-primary" onclick="loginWithCode()">تسجيل الدخول</button>
+  <!-- أزرار التنقل السريع للواجهات -->
+  <div class="nav-tabs no-print">
+    <button id="btnTabEmp" class="tab-btn active" onclick="switchTab('emp')">بوابة الموظف</button>
+    <button id="btnTabAdmin" class="tab-btn" onclick="switchTab('admin')">لوحة المدير</button>
   </div>
 
-  <!-- لوحة الموظف الرئيسية -->
-  <div id="dashboardSection" class="card" style="display: none;">
-    <div class="header-flex">
-      <div>
-        <h2>أهلاً بك، <span id="employeeName"></span></h2>
-        <p class="subtitle">كود الموظف: <code id="employeeCodeDisplay"></code></p>
+  <!-- 1. قسم الموظف -->
+  <div id="empSection">
+    <div id="loginCard" class="card">
+      <h2>تسجيل دخول الموظف</h2>
+      <p class="subtitle">أدخل الكود الخاص بك للدخول إلى النظام</p>
+      <div class="form-group">
+        <label>كود الموظف:</label>
+        <input type="text" id="employeeCodeInput" placeholder="أدخل الكود (مثال: 1001)">
       </div>
-      <button class="btn btn-logout" onclick="logout()">تسجيل الخروج</button>
+      <div id="loginError" class="error-msg" style="display: none;"></div>
+      <button class="btn btn-primary" onclick="loginWithCode()">تسجيل الدخول</button>
     </div>
 
-    <div class="status-box">
-      <p>حالة الدوام الحالية: <strong id="currentStatus">على رأس العمل</strong></p>
-      <p id="breakLog" class="break-log-text"></p>
-    </div>
+    <div id="dashCard" class="card" style="display: none;">
+      <div class="header-flex">
+        <div>
+          <h2>أهلاً بك، <span id="empName"></span></h2>
+          <p class="subtitle">كود الموظف: <code id="empCode"></code></p>
+        </div>
+        <button class="btn btn-logout" onclick="logout()">تسجيل الخروج</button>
+      </div>
 
-    <div class="actions">
+      <div class="status-box">
+        <p>حالة الدوام الحالية: <strong id="currentStatus">على رأس العمل</strong></p>
+        <p id="breakLog" style="color: #6b7280; font-size: 13px;"></p>
+      </div>
+
       <button id="breakBtn" class="btn btn-warning" onclick="toggleBreak()">بدء الاستراحة (Break)</button>
+    </div>
+  </div>
+
+  <!-- 2. قسم المدير -->
+  <div id="adminSection" style="display: none;">
+    <div class="card">
+      <div class="header-flex no-print">
+        <h2>سجل بيانات وحضور الموظفين</h2>
+        <button class="btn btn-print" onclick="window.print()">طباعة التقرير</button>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>اسم الموظف</th>
+              <th>الكود</th>
+              <th>رقم الهوية</th>
+              <th>الهاتف</th>
+              <th>المبلغ</th>
+              <th>النسبة</th>
+              <th>الحالة</th>
+              <th class="no-print">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="employeeTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<script src="script.js"></script>
+<!-- نافذة التعديل Modal -->
+<div id="editModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>تعديل بيانات الموظف</h3>
+    <form onsubmit="event.preventDefault(); saveEmployeeChanges();">
+      <input type="hidden" id="editCode">
+      <div class="form-group"><label>اسم الموظف:</label><input type="text" id="editName" required></div>
+      <div class="form-group"><label>رقم الهوية:</label><input type="text" id="editNationalId"></div>
+      <div class="form-group"><label>رقم الهاتف:</label><input type="text" id="editPhone"></div>
+      <div class="form-group"><label>المبلغ:</label><input type="text" id="editSalary"></div>
+      <div class="form-group"><label>النسبة:</label><input type="text" id="editRate"></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-save">حفظ التغييرات</button>
+        <button type="button" class="btn btn-cancel" onclick="closeEditModal()">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const defaultEmployees = [
+    { code: "1001", name: "زياد فتحي احمد حسن", nationalId: "401000001", phone: "0599000001", salary: "5500", rate: "0.00", status: "على رأس العمل" },
+    { code: "1002", name: "عهد جمعه فؤاد سمحان", nationalId: "401000002", phone: "0599000002", salary: "6000", rate: "0.00", status: "على رأس العمل" },
+    { code: "1003", name: "ناهي عمار", nationalId: "401000003", phone: "0599000003", salary: "3000", rate: "0.00", status: "على رأس العمل" },
+    { code: "1004", name: "رغد بركات", nationalId: "401000004", phone: "0599000004", salary: "1200", rate: "0.00", status: "على رأس العمل" },
+    { code: "1005", name: "محمد مرمش", nationalId: "401000005", phone: "0599000005", salary: "3200", rate: "0.00", status: "على رأس العمل" },
+    { code: "1006", name: "مصطفى علي الهندي", nationalId: "401000006", phone: "0599000006", salary: "2300", rate: "10.65", status: "على رأس العمل" },
+    { code: "1007", name: "نور مزاحم", nationalId: "401000007", phone: "0599000007", salary: "2700", rate: "12.50", status: "على رأس العمل" },
+    { code: "1008", name: "محمود جمال قاسم", nationalId: "401000008", phone: "0599000008", salary: "3200", rate: "14.81", status: "على رأس العمل" },
+    { code: "1009", name: "محمد جبريل صابر منصور", nationalId: "401000009", phone: "0599000009", salary: "3000", rate: "13.89", status: "على رأس العمل" },
+    { code: "1010", name: "محمد قواسمة", nationalId: "401000010", phone: "0599000010", salary: "2500", rate: "11.57", status: "على رأس العمل" }
+  ];
+
+  function getEmployees() {
+    const saved = localStorage.getItem('dawami_list');
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem('dawami_list', JSON.stringify(defaultEmployees));
+    return defaultEmployees;
+  }
+
+  function saveEmployees(data) {
+    localStorage.setItem('dawami_list', JSON.stringify(data));
+  }
+
+  let currentUser = null;
+  let isOnBreak = false;
+
+  function switchTab(tab) {
+    document.getElementById('btnTabEmp').classList.toggle('active', tab === 'emp');
+    document.getElementById('btnTabAdmin').classList.toggle('active', tab === 'admin');
+    document.getElementById('empSection').style.display = tab === 'emp' ? 'block' : 'none';
+    document.getElementById('adminSection').style.display = tab === 'admin' ? 'block' : 'none';
+    if (tab === 'admin') loadAdminData();
+  }
+
+  function loginWithCode() {
+    const code = document.getElementById('employeeCodeInput').value.trim();
+    const employees = getEmployees();
+    const emp = employees.find(e => e.code === code);
+
+    if (emp) {
+      currentUser = emp;
+      document.getElementById('empName').innerText = emp.name;
+      document.getElementById('empCode').innerText = emp.code;
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('dashCard').style.display = 'block';
+    } else {
+      const err = document.getElementById('loginError');
+      err.innerText = "الكود غير صحيح!";
+      err.style.display = 'block';
+    }
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('employeeCodeInput').value = '';
+    document.getElementById('loginCard').style.display = 'block';
+    document.getElementById('dashCard').style.display = 'none';
+  }
+
+  function toggleBreak() {
+    if (!currentUser) return;
+    isOnBreak = !isOnBreak;
+    const btn = document.getElementById('breakBtn');
+    const status = document.getElementById('currentStatus');
+    const log = document.getElementById('breakLog');
+    const now = new Date().toLocaleTimeString('ar-EG');
+
+    let employees = getEmployees();
+    const idx = employees.findIndex(e => e.code === currentUser.code);
+
+    if (isOnBreak) {
+      btn.innerText = "إنهاء الاستراحة";
+      btn.classList.add('active');
+      status.innerText = "في استراحة";
+      status.style.color = "#d97706";
+      log.innerText = `بدأت الاستراحة الساعة: ${now}`;
+      if (idx !== -1) employees[idx].status = "في استراحة";
+    } else {
+      btn.innerText = "بدء الاستراحة (Break)";
+      btn.classList.remove('active');
+      status.innerText = "على رأس العمل";
+      status.style.color = "#10b981";
+      log.innerText = `انتهت الاستراحة الساعة: ${now}`;
+      if (idx !== -1) employees[idx].status = "على رأس العمل";
+    }
+    saveEmployees(employees);
+  }
+
+  function loadAdminData() {
+    const table = document.getElementById('employeeTableBody');
+    const employees = getEmployees();
+    table.innerHTML = '';
+
+    employees.forEach((emp, i) => {
+      const isBreak = emp.status === "في استراحة";
+      table.innerHTML += `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${emp.name}</strong></td>
+          <td><code>${emp.code}</code></td>
+          <td>${emp.nationalId || '-'}</td>
+          <td>${emp.phone || '-'}</td>
+          <td>${emp.salary || '0'}</td>
+          <td>${emp.rate || '0.00'}</td>
+          <td><span class="status-badge ${isBreak ? 'status-break' : 'status-working'}">${emp.status}</span></td>
+          <td class="no-print">
+            <button class="btn btn-edit" onclick="openEditModal('${emp.code}')">تعديل</button>
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  function openEditModal(code) {
+    const emp = getEmployees().find(e => e.code === code);
+    if (!emp) return;
+    document.getElementById('editCode').value = emp.code;
+    document.getElementById('editName').value = emp.name;
+    document.getElementById('editNationalId').value = emp.nationalId || '';
+    document.getElementById('editPhone').value = emp.phone || '';
+    document.getElementById('editSalary').value = emp.salary || '';
+    document.getElementById('editRate').value = emp.rate || '';
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+  }
+
+  function saveEmployeeChanges() {
+    const code = document.getElementById('editCode').value;
+    let employees = getEmployees();
+    const idx = employees.findIndex(e => e.code === code);
+
+    if (idx !== -1) {
+      employees[idx].name = document.getElementById('editName').value.trim();
+      employees[idx].nationalId = document.getElementById('editNationalId').value.trim();
+      employees[idx].phone = document.getElementById('editPhone').value.trim();
+      employees[idx].salary = document.getElementById('editSalary').value.trim();
+      employees[idx].rate = document.getElementById('editRate').value.trim();
+
+      saveEmployees(employees);
+      closeEditModal();
+      loadAdminData();
+    }
+  }
+</script>
 </body>
 </html>
