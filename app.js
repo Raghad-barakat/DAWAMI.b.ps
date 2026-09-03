@@ -1,69 +1,94 @@
-// --- التهيئة والتخزين المحلي ---
-const DEFAULT_SETTINGS = {
-    companyCode: "COMP123", // الكود المفتراضي للشركة
-    adminPassword: "admin",
-    lat: 31.9539,           // إحداثيات افتراضية
-    lng: 35.9106,
-    radiusMeters: 100       // المسافة المسموحة (مثلاً 100 متر)
+// --- 1. إعدادات السحابة Firebase الخاصة بمشروعك DAWAMIbps ---
+const firebaseConfig = {
+    apiKey: "AIzaSyCqERoBLSxpk_FTvTepbyTQd6C2aT9vNts",
+    authDomain: "dawamibps.firebaseapp.com",
+    projectId: "dawamibps",
+    storageBucket: "dawamibps.firebasestorage.app",
+    messagingSenderId: "949392669004",
+    appId: "1:949392669004:web:89b8c65e631662c6d2b7e9",
+    measurementId: "G-ZMECR36J4S"
 };
 
-// جلب الإعدادات أو إنشائها
-let settings = JSON.parse(localStorage.getItem('dawami_settings')) || DEFAULT_SETTINGS;
-let employees = JSON.parse(localStorage.getItem('dawami_employees')) || [];
-let attendanceLogs = JSON.parse(localStorage.getItem('dawami_attendance')) || [];
-let currentEmployee = JSON.parse(localStorage.getItem('dawami_current_user')) || null;
+// تهيئة Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-// تشغيل التطبيق عند التحميل
+let currentEmployee = JSON.parse(localStorage.getItem('dawami_current_user')) || null;
+let cachedSettings = { companyCode: "COMP123", adminPassword: "admin", lat: 31.9539, lng: 35.9106, radiusMeters: 100 };
+
 window.onload = function() {
     initApp();
 };
 
-function initApp() {
-    localStorage.setItem('dawami_settings', JSON.stringify(settings));
+async function initApp() {
+    try {
+        const doc = await db.collection('settings').doc('company').get();
+        if (doc.exists) {
+            cachedSettings = doc.data();
+        } else {
+            await db.collection('settings').doc('company').set(cachedSettings);
+        }
+    } catch(e) {
+        console.log("Firebase initialized");
+    }
+
     if (currentEmployee) {
         showEmployeeDashboard();
     }
 }
 
-// --- 1. التحقق من كود الشركة مع حل المشكلة ---
-function verifyCompanyCode() {
+// --- 2. التحقق من كود الشركة من السحابة ---
+async function verifyCompanyCode() {
     const inputCode = document.getElementById('companyCodeInput').value.trim();
     const errorElem = document.getElementById('codeError');
-    
-    // مطابقة الكود مع إزالة أي مسافات زائدة
-    if (inputCode.toUpperCase() === settings.companyCode.trim().toUpperCase()) {
-        errorElem.innerText = "";
-        document.getElementById('companyCodeSection').classList.add('hidden');
-        document.getElementById('employeeRegistrationSection').classList.remove('hidden');
-    } else {
-        errorElem.innerText = "❌ الكود غير صحيح، يرجى التأكد من كود الشركة والتحقق مرة أخرى.";
+
+    try {
+        const doc = await db.collection('settings').doc('company').get();
+        const settings = doc.exists ? doc.data() : cachedSettings;
+
+        if (inputCode.toUpperCase() === (settings.companyCode || "COMP123").trim().toUpperCase()) {
+            errorElem.innerText = "";
+            document.getElementById('companyCodeSection').classList.add('hidden');
+            document.getElementById('employeeRegistrationSection').classList.remove('hidden');
+        } else {
+            errorElem.innerText = "❌ كود الشركة غير صحيح! يرجى التأكد وإعادة المحاولة.";
+        }
+    } catch(err) {
+        errorElem.innerText = "حدث خطأ في الاتصال بقاعدة البيانات. تأكد من تفعيل Firestore Database.";
     }
 }
 
-// --- 2. حفظ بيانات الموظف (الاسم الرباعي، الهوية، الهاتف، المسمى) ---
-function saveEmployeeProfile(e) {
+// --- 3. حفظ بيانات الموظف بالسحابة ---
+async function saveEmployeeProfile(e) {
     e.preventDefault();
     const fullName = document.getElementById('empFullName').value.trim();
     const nationalId = document.getElementById('empNationalId').value.trim();
     const phone = document.getElementById('empPhone').value.trim();
     const jobTitle = document.getElementById('empJobTitle').value.trim();
 
-    // البحث عن الموظف أو إضافته
-    let emp = employees.find(emp => emp.nationalId === nationalId);
-    if (!emp) {
-        emp = { id: Date.now().toString(), fullName, nationalId, phone, jobTitle };
-        employees.push(emp);
-        localStorage.setItem('dawami_employees', JSON.stringify(employees));
-    }
+    try {
+        const snapshot = await db.collection('employees').where('nationalId', '==', nationalId).get();
+        let empId = null;
+        let empData = { fullName, nationalId, phone, jobTitle };
 
-    currentEmployee = emp;
-    localStorage.setItem('dawami_current_user', JSON.stringify(currentEmployee));
-    
-    document.getElementById('employeeRegistrationSection').classList.add('hidden');
-    showEmployeeDashboard();
+        if (!snapshot.empty) {
+            empId = snapshot.docs[0].id;
+            await db.collection('employees').doc(empId).update(empData);
+        } else {
+            const docRef = await db.collection('employees').add(empData);
+            empId = docRef.id;
+        }
+
+        currentEmployee = { id: empId, ...empData };
+        localStorage.setItem('dawami_current_user', JSON.stringify(currentEmployee));
+
+        document.getElementById('employeeRegistrationSection').classList.add('hidden');
+        showEmployeeDashboard();
+    } catch(err) {
+        alert("حدث خطأ أثناء حفظ البيانات: " + err.message);
+    }
 }
 
-// --- 3. شاشة الموظف وفحص الموقع الجغرافي (Geofencing) ---
 function showEmployeeDashboard() {
     document.getElementById('companyCodeSection').classList.add('hidden');
     document.getElementById('employeeDashboard').classList.remove('hidden');
@@ -73,9 +98,9 @@ function showEmployeeDashboard() {
     checkEmployeeLocation();
 }
 
-// حساب المسافة بين نقطتين بالإحداثيات (Haversine Formula)
+// --- 4. فحص الموقع الجغرافي (GPS) ---
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // نصف قطر الأرض بالمتر
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI/180;
     const φ2 = lat2 * Math.PI/180;
     const Δφ = (lat2-lat1) * Math.PI/180;
@@ -86,11 +111,14 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
               Math.sin(Δλ/2) * Math.sin(Δλ/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-    return R * c; // المسافة بالمتر
+    return R * c;
 }
 
-function checkEmployeeLocation(callback) {
+async function checkEmployeeLocation(callback) {
     const statusElem = document.getElementById('locationStatus');
+    const doc = await db.collection('settings').doc('company').get();
+    const settings = doc.exists ? doc.data() : cachedSettings;
+
     if (!navigator.geolocation) {
         statusElem.innerText = "⚠️ خاصية تحديد الموقع غير مدعومة في متصفحك.";
         return;
@@ -101,25 +129,25 @@ function checkEmployeeLocation(callback) {
             const userLat = pos.coords.latitude;
             const userLng = pos.coords.longitude;
             const distance = calculateDistance(userLat, userLng, settings.lat, settings.lng);
-            
-            if (distance <= settings.radiusMeters) {
-                statusElem.innerHTML = `<span style="color:green;">✅ أنت داخل نطاق الشركة (${Math.round(distance)} متر)</span>`;
+
+            if (distance <= (settings.radiusMeters || 100)) {
+                statusElem.innerHTML = `<span style="color:green; font-weight:bold;">✅ أنت داخل نطاق الشركة (${Math.round(distance)} متر)</span>`;
                 if(callback) callback(true);
             } else {
-                statusElem.innerHTML = `<span style="color:red;">❌ أنت خارج نطاق الشركة (${Math.round(distance)} متر من ${settings.radiusMeters} متر المسموحة)</span>`;
+                statusElem.innerHTML = `<span style="color:red; font-weight:bold;">❌ أنت خارج نطاق الشركة (${Math.round(distance)} متر من ${settings.radiusMeters || 100} متر المسموحة)</span>`;
                 if(callback) callback(false);
             }
         },
         () => {
-            statusElem.innerText = "⚠️ تعذر جلب الموقع. يرجى تفعيل الـ GPS ومشاركة الموقع.";
+            statusElem.innerText = "⚠️ يرجى تفعيل الـ GPS ومشاركة الموقع للتحقق من وجودك بالشركة.";
             if(callback) callback(false);
         }
     );
 }
 
-// تسجيل الحضور والانصراف
-function clockIn() {
-    checkEmployeeLocation((isWithin) => {
+// --- 5. تسجيل الحضور والانصراف السحابي ---
+async function clockIn() {
+    checkEmployeeLocation(async (isWithin) => {
         if (!isWithin) {
             alert("لا يمكنك تسجيل الحضور لأنك خارج نطاق الشركة المحدد!");
             return;
@@ -127,29 +155,35 @@ function clockIn() {
         const today = new Date().toISOString().split('T')[0];
         const timeNow = new Date().toLocaleTimeString('ar-EG');
 
-        let record = attendanceLogs.find(l => l.empId === currentEmployee.id && l.date === today);
-        if (record) {
-            alert("لقد قمت بتسجيل الحضور اليوم بالفعل!");
-            return;
+        try {
+            const snapshot = await db.collection('attendance')
+                .where('empId', '==', currentEmployee.id)
+                .where('date', '==', today)
+                .get();
+
+            if (!snapshot.empty) {
+                alert("لقد قمت بتسجيل الحضور اليوم بالفعل!");
+                return;
+            }
+
+            await db.collection('attendance').add({
+                empId: currentEmployee.id,
+                empName: currentEmployee.fullName,
+                date: today,
+                clockIn: timeNow,
+                clockOut: "--",
+                status: "حاضر"
+            });
+
+            alert("تم تسجيل الحضور بنجاح في: " + timeNow);
+        } catch(err) {
+            alert("حدث خطأ أثناء التسجيل: " + err.message);
         }
-
-        attendanceLogs.push({
-            id: Date.now().toString(),
-            empId: currentEmployee.id,
-            empName: currentEmployee.fullName,
-            date: today,
-            clockIn: timeNow,
-            clockOut: "--",
-            status: "حاضر"
-        });
-
-        localStorage.setItem('dawami_attendance', JSON.stringify(attendanceLogs));
-        alert("تم تسجيل الحضور بنجاح في: " + timeNow);
     });
 }
 
-function clockOut() {
-    checkEmployeeLocation((isWithin) => {
+async function clockOut() {
+    checkEmployeeLocation(async (isWithin) => {
         if (!isWithin) {
             alert("لا يمكنك تسجيل الانصراف لأنك خارج نطاق الشركة!");
             return;
@@ -157,19 +191,30 @@ function clockOut() {
         const today = new Date().toISOString().split('T')[0];
         const timeNow = new Date().toLocaleTimeString('ar-EG');
 
-        let record = attendanceLogs.find(l => l.empId === currentEmployee.id && l.date === today);
-        if (!record) {
-            alert("لم تقم بتسجيل الحضور اليوم بعد!");
-            return;
-        }
+        try {
+            const snapshot = await db.collection('attendance')
+                .where('empId', '==', currentEmployee.id)
+                .where('date', '==', today)
+                .get();
 
-        record.clockOut = timeNow;
-        localStorage.setItem('dawami_attendance', JSON.stringify(attendanceLogs));
-        alert("تم تسجيل الانصراف بنجاح في: " + timeNow);
+            if (snapshot.empty) {
+                alert("لم تقم بتسجيل الحضور اليوم بعد!");
+                return;
+            }
+
+            const docId = snapshot.docs[0].id;
+            await db.collection('attendance').doc(docId).update({
+                clockOut: timeNow
+            });
+
+            alert("تم تسجيل الانصراف بنجاح في: " + timeNow);
+        } catch(err) {
+            alert("حدث خطأ أثناء تسجيل الانصراف: " + err.message);
+        }
     });
 }
 
-// --- 4. لوحة تحكم الأدمن والصلاحيات ---
+// --- 6. لوحة تحكم الأدمن والصلاحيات ---
 function showAdminLogin() {
     document.getElementById('companyCodeSection').classList.add('hidden');
     document.getElementById('adminLoginSection').classList.remove('hidden');
@@ -180,9 +225,12 @@ function showCompanyCodeSection() {
     document.getElementById('companyCodeSection').classList.remove('hidden');
 }
 
-function loginAdmin() {
+async function loginAdmin() {
     const pass = document.getElementById('adminPasswordInput').value;
-    if (pass === settings.adminPassword) {
+    const doc = await db.collection('settings').doc('company').get();
+    const settings = doc.exists ? doc.data() : cachedSettings;
+
+    if (pass === (settings.adminPassword || "admin")) {
         document.getElementById('adminLoginSection').classList.add('hidden');
         document.getElementById('adminDashboard').classList.remove('hidden');
         loadAdminData();
@@ -191,21 +239,43 @@ function loginAdmin() {
     }
 }
 
-function loadAdminData() {
-    // تحميل إعدادات الموقع والشركة
-    document.getElementById('settingCompanyCode').value = settings.companyCode;
-    document.getElementById('settingLat').value = settings.lat;
-    document.getElementById('settingLng').value = settings.lng;
-    document.getElementById('settingRadius').value = settings.radiusMeters;
+async function loadAdminData() {
+    const doc = await db.collection('settings').doc('company').get();
+    if (doc.exists) {
+        const s = doc.data();
+        document.getElementById('settingCompanyCode').value = s.companyCode || "COMP123";
+        document.getElementById('settingAdminPassword').value = s.adminPassword || "admin";
+        document.getElementById('settingLat').value = s.lat || "";
+        document.getElementById('settingLng').value = s.lng || "";
+        document.getElementById('settingRadius').value = s.radiusMeters || 100;
+    }
 
-    // تحميل قائمة الموظفين في خانة الـ PDF
+    const empSnap = await db.collection('employees').get();
     const select = document.getElementById('pdfEmpSelect');
     select.innerHTML = `<option value="ALL">جميع الموظفين</option>`;
-    employees.forEach(emp => {
-        select.innerHTML += `<option value="${emp.id}">${emp.fullName} (${emp.jobTitle})</option>`;
+    empSnap.forEach(d => {
+        const emp = d.data();
+        select.innerHTML += `<option value="${d.id}">${emp.fullName} (${emp.jobTitle})</option>`;
     });
 
-    renderAttendanceTable();
+    db.collection('attendance').onSnapshot(snapshot => {
+        const tbody = document.getElementById('attendanceTableBody');
+        tbody.innerHTML = "";
+        snapshot.forEach(doc => {
+            const log = doc.data();
+            const id = doc.id;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${log.empName}</td>
+                    <td>${log.date}</td>
+                    <td><input type="text" value="${log.clockIn}" onchange="updateAttendance('${id}', 'clockIn', this.value)"></td>
+                    <td><input type="text" value="${log.clockOut}" onchange="updateAttendance('${id}', 'clockOut', this.value)"></td>
+                    <td>${log.status}</td>
+                    <td><button class="btn-danger" onclick="deleteLog('${id}')">حذف</button></td>
+                </tr>
+            `;
+        });
+    });
 }
 
 function getCurrentLocationForAdmin() {
@@ -213,75 +283,50 @@ function getCurrentLocationForAdmin() {
         navigator.geolocation.getCurrentPosition(pos => {
             document.getElementById('settingLat').value = pos.coords.latitude;
             document.getElementById('settingLng').value = pos.coords.longitude;
-            alert("تم جلب موقعك الحالي كـ موقع رسمي للشركة بنجاح!");
+            alert("تم التقاط موقعك الحالي كـ موقع للشركة بنجاح!");
         });
     }
 }
 
-function saveCompanySettings() {
-    settings.companyCode = document.getElementById('settingCompanyCode').value.trim();
-    settings.lat = parseFloat(document.getElementById('settingLat').value);
-    settings.lng = parseFloat(document.getElementById('settingLng').value);
-    settings.radiusMeters = parseInt(document.getElementById('settingRadius').value);
+async function saveCompanySettings() {
+    const newSettings = {
+        companyCode: document.getElementById('settingCompanyCode').value.trim(),
+        adminPassword: document.getElementById('settingAdminPassword').value.trim(),
+        lat: parseFloat(document.getElementById('settingLat').value),
+        lng: parseFloat(document.getElementById('settingLng').value),
+        radiusMeters: parseInt(document.getElementById('settingRadius').value)
+    };
 
-    localStorage.setItem('dawami_settings', JSON.stringify(settings));
-    alert("تم حفظ إعدادات الشركة والموقع الجغرافي بنجاح!");
+    await db.collection('settings').doc('company').set(newSettings, { merge: true });
+    alert("تم حفظ الإعدادات على السحابة بنجاح!");
 }
 
-// إضافة موظف جديد من الأدمن
-function adminAddEmployee(e) {
+async function adminAddEmployee(e) {
     e.preventDefault();
-    const fullName = document.getElementById('newEmpName').value;
-    const nationalId = document.getElementById('newEmpId').value;
-    const phone = document.getElementById('newEmpPhone').value;
-    const jobTitle = document.getElementById('newEmpTitle').value;
+    const newEmp = {
+        fullName: document.getElementById('newEmpName').value,
+        nationalId: document.getElementById('newEmpId').value,
+        phone: document.getElementById('newEmpPhone').value,
+        jobTitle: document.getElementById('newEmpTitle').value
+    };
 
-    const newEmp = { id: Date.now().toString(), fullName, nationalId, phone, jobTitle };
-    employees.push(newEmp);
-    localStorage.setItem('dawami_employees', JSON.stringify(employees));
-    
+    await db.collection('employees').add(newEmp);
     alert("تمت إضافة الموظف بنجاح!");
     e.target.reset();
     loadAdminData();
 }
 
-// عرض وتعديل دوام الموظفين (صلاحية الأدمن)
-function renderAttendanceTable() {
-    const tbody = document.getElementById('attendanceTableBody');
-    tbody.innerHTML = "";
-
-    attendanceLogs.forEach((log) => {
-        tbody.innerHTML += `
-            <tr>
-                <td>${log.empName}</td>
-                <td>${log.date}</td>
-                <td><input type="text" value="${log.clockIn}" onchange="updateAttendance('${log.id}', 'clockIn', this.value)"></td>
-                <td><input type="text" value="${log.clockOut}" onchange="updateAttendance('${log.id}', 'clockOut', this.value)"></td>
-                <td>${log.status}</td>
-                <td><button class="btn-danger" onclick="deleteLog('${log.id}')">حذف</button></td>
-            </tr>
-        `;
-    });
+async function updateAttendance(logId, field, value) {
+    await db.collection('attendance').doc(logId).update({ [field]: value });
 }
 
-function updateAttendance(logId, field, value) {
-    let log = attendanceLogs.find(l => l.id === logId);
-    if (log) {
-        log[field] = value;
-        localStorage.setItem('dawami_attendance', JSON.stringify(attendanceLogs));
-    }
-}
-
-function deleteLog(logId) {
+async function deleteLog(logId) {
     if (confirm("هل أنت تأكد من حذف هذا السجل؟")) {
-        attendanceLogs = attendanceLogs.filter(l => l.id !== logId);
-        localStorage.setItem('dawami_attendance', JSON.stringify(attendanceLogs));
-        renderAttendanceTable();
+        await db.collection('attendance').doc(logId).delete();
     }
 }
 
-// --- 5. طباعة كشف الدوام بصيغة PDF ---
-function generatePDFReport() {
+async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
@@ -289,21 +334,17 @@ function generatePDFReport() {
     const startDate = document.getElementById('pdfStartDate').value;
     const endDate = document.getElementById('pdfEndDate').value;
 
-    let filteredLogs = attendanceLogs;
+    const snapshot = await db.collection('attendance').get();
+    let logs = [];
+    snapshot.forEach(d => logs.push({ id: d.id, ...d.data() }));
 
-    if (selectedEmpId !== "ALL") {
-        filteredLogs = filteredLogs.filter(l => l.empId === selectedEmpId);
-    }
-    if (startDate) {
-        filteredLogs = filteredLogs.filter(l => l.date >= startDate);
-    }
-    if (endDate) {
-        filteredLogs = filteredLogs.filter(l => l.date <= endDate);
-    }
+    if (selectedEmpId !== "ALL") logs = logs.filter(l => l.empId === selectedEmpId);
+    if (startDate) logs = logs.filter(l => l.date >= startDate);
+    if (endDate) logs = logs.filter(l => l.date <= endDate);
 
     doc.text("جدول الحضور والانصراف - تطبيق دوامي", 105, 15, { align: "center" });
 
-    const tableData = filteredLogs.map(l => [l.empName, l.date, l.clockIn, l.clockOut, l.status]);
+    const tableData = logs.map(l => [l.empName, l.date, l.clockIn, l.clockOut, l.status]);
 
     doc.autoTable({
         head: [['الموظف', 'التاريخ', 'وقت الحضور', 'وقت الانصراف', 'الحالة']],
