@@ -1,4 +1,4 @@
-// --- 1. إعدادات السحابة Firebase الخاص بمشروعك ---
+// --- 1. إعدادات السحابة Firebase الخاصة بمشروعك DAWAMIbps ---
 const firebaseConfig = {
     apiKey: "AIzaSyCqERoBLSxpk_FTvTepbyTQd6C2aT9vNts",
     authDomain: "dawamibps.firebaseapp.com",
@@ -44,9 +44,9 @@ async function verifyCompanyCode() {
 
     try {
         const doc = await db.collection('settings').doc('company').get();
-        const settings = doc.data() || cachedSettings;
+        const settings = doc.exists ? doc.data() : cachedSettings;
 
-        if (inputCode.toUpperCase() === settings.companyCode.trim().toUpperCase()) {
+        if (inputCode.toUpperCase() === (settings.companyCode || "COMP123").trim().toUpperCase()) {
             errorElem.innerText = "";
             document.getElementById('companyCodeSection').classList.add('hidden');
             document.getElementById('employeeRegistrationSection').classList.remove('hidden');
@@ -117,10 +117,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 async function checkEmployeeLocation(callback) {
     const statusElem = document.getElementById('locationStatus');
     const doc = await db.collection('settings').doc('company').get();
-    const settings = doc.data() || cachedSettings;
+    const settings = doc.exists ? doc.data() : cachedSettings;
 
     if (!navigator.geolocation) {
-        statusElem.innerText = "⚠️ خاصية تحديد الموقع غير مدعومة.";
+        statusElem.innerText = "⚠️ خاصية تحديد الموقع غير مدعومة في متصفحك.";
         return;
     }
 
@@ -130,16 +130,16 @@ async function checkEmployeeLocation(callback) {
             const userLng = pos.coords.longitude;
             const distance = calculateDistance(userLat, userLng, settings.lat, settings.lng);
 
-            if (distance <= settings.radiusMeters) {
-                statusElem.innerHTML = `<span style="color:green;">✅ أنت داخل نطاق الشركة (${Math.round(distance)} متر)</span>`;
+            if (distance <= (settings.radiusMeters || 100)) {
+                statusElem.innerHTML = `<span style="color:green; font-weight:bold;">✅ أنت داخل نطاق الشركة (${Math.round(distance)} متر)</span>`;
                 if(callback) callback(true);
             } else {
-                statusElem.innerHTML = `<span style="color:red;">❌ أنت خارج نطاق الشركة (${Math.round(distance)} متر من ${settings.radiusMeters} متر المسموحة)</span>`;
+                statusElem.innerHTML = `<span style="color:red; font-weight:bold;">❌ أنت خارج نطاق الشركة (${Math.round(distance)} متر من ${settings.radiusMeters || 100} متر المسموحة)</span>`;
                 if(callback) callback(false);
             }
         },
         () => {
-            statusElem.innerText = "⚠️ يرجى تفعيل الـ GPS في هاتفك لتحديد الموقع.";
+            statusElem.innerText = "⚠️ يرجى تفعيل الـ GPS ومشاركة الموقع للتحقق من وجودك بالشركة.";
             if(callback) callback(false);
         }
     );
@@ -214,7 +214,7 @@ async function clockOut() {
     });
 }
 
-// --- 6. لوحة تحكم الأدمن ---
+// --- 6. لوحة تحكم الأدمن والصلاحيات ---
 function showAdminLogin() {
     document.getElementById('companyCodeSection').classList.add('hidden');
     document.getElementById('adminLoginSection').classList.remove('hidden');
@@ -228,9 +228,9 @@ function showCompanyCodeSection() {
 async function loginAdmin() {
     const pass = document.getElementById('adminPasswordInput').value;
     const doc = await db.collection('settings').doc('company').get();
-    const settings = doc.data() || cachedSettings;
+    const settings = doc.exists ? doc.data() : cachedSettings;
 
-    if (pass === settings.adminPassword) {
+    if (pass === (settings.adminPassword || "admin")) {
         document.getElementById('adminLoginSection').classList.add('hidden');
         document.getElementById('adminDashboard').classList.remove('hidden');
         loadAdminData();
@@ -243,10 +243,11 @@ async function loadAdminData() {
     const doc = await db.collection('settings').doc('company').get();
     if (doc.exists) {
         const s = doc.data();
-        document.getElementById('settingCompanyCode').value = s.companyCode || "";
+        document.getElementById('settingCompanyCode').value = s.companyCode || "COMP123";
+        document.getElementById('settingAdminPassword').value = s.adminPassword || "admin";
         document.getElementById('settingLat').value = s.lat || "";
         document.getElementById('settingLng').value = s.lng || "";
-        document.getElementById('settingRadius').value = s.radiusMeters || "";
+        document.getElementById('settingRadius').value = s.radiusMeters || 100;
     }
 
     const empSnap = await db.collection('employees').get();
@@ -282,7 +283,7 @@ function getCurrentLocationForAdmin() {
         navigator.geolocation.getCurrentPosition(pos => {
             document.getElementById('settingLat').value = pos.coords.latitude;
             document.getElementById('settingLng').value = pos.coords.longitude;
-            alert("تم التقاط موقعك الحالي!");
+            alert("تم التقاط موقعك الحالي كـ موقع للشركة بنجاح!");
         });
     }
 }
@@ -290,6 +291,7 @@ function getCurrentLocationForAdmin() {
 async function saveCompanySettings() {
     const newSettings = {
         companyCode: document.getElementById('settingCompanyCode').value.trim(),
+        adminPassword: document.getElementById('settingAdminPassword').value.trim(),
         lat: parseFloat(document.getElementById('settingLat').value),
         lng: parseFloat(document.getElementById('settingLng').value),
         radiusMeters: parseInt(document.getElementById('settingRadius').value)
