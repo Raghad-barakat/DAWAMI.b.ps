@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق دوامي - نظام إدارة وحضور الموظفين</title>
+    <title>تطبيق دوامي - نظام إدارة وحضور الموظفين السحابي</title>
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- مكتبات Firebase السحابية -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <!-- مكتبة طباعة تقارير PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
     <div class="container">
+        <!-- شاشة إدخال كود الشركة -->
         <div id="companyCodeSection" class="card">
             <h2>تسجيل الدخول - تطبيق دوامي</h2>
             <p>يرجى إدخال كود الشركة للبدء</p>
@@ -24,18 +31,20 @@
             <p id="codeError" class="error-msg"></p>
         </div>
 
+        <!-- شاشة استكمال بيانات الموظف لأول مرة -->
         <div id="employeeRegistrationSection" class="card hidden">
             <h2>إكمال بيانات الموظف</h2>
-            <p>يرجى تعبئة البيانات التالية لمرة واحدة لتسجيل حضورك</p>
+            <p>يرجى تعبئة البيانات التالية لمرة واحدة لتسجيل حسابك في الشركة</p>
             <form id="empRegisterForm" onsubmit="saveEmployeeProfile(event)">
                 <input type="text" id="empFullName" placeholder="الاسم الرباعي" required>
                 <input type="text" id="empNationalId" placeholder="رقم الهوية" required>
                 <input type="tel" id="empPhone" placeholder="رقم الهاتف" required>
                 <input type="text" id="empJobTitle" placeholder="المسمى الوظيفي" required>
-                <button type="submit">حفظ ودخول للنظام</button>
+                <button type="submit" class="btn-success">حفظ ودخول للنظام</button>
             </form>
         </div>
 
+        <!-- شاشة الموظف الرئيسية (تسجيل الحضور والانصراف) -->
         <div id="employeeDashboard" class="card hidden">
             <div class="user-header">
                 <h3>أهلاً بك، <span id="welcomeEmpName"></span></h3>
@@ -43,7 +52,7 @@
             </div>
 
             <div class="location-status card-inner">
-                <p>📍 موقعك الحالي: <span id="locationStatus">جاري تحديد الموقع...</span></p>
+                <p>📍 موقعك الحالي: <span id="locationStatus">جاري فحص الموقع الجغرافي...</span></p>
             </div>
 
             <div class="action-buttons">
@@ -54,20 +63,23 @@
             <button class="btn-outline" onclick="logout()">تسجيل خروج</button>
         </div>
 
+        <!-- شاشة تسجيل دخول الأدمن -->
         <div id="adminLoginSection" class="card hidden">
             <h2>دخول حساب الأدمن</h2>
-            <input type="password" id="adminPasswordInput" placeholder="كلمة مرور الأدمن">
+            <input type="password" id="adminPasswordInput" placeholder="كلمة مرور الأدمن (الافتراضية: admin)">
             <button onclick="loginAdmin()">دخول</button>
             <button class="btn-secondary" onclick="showCompanyCodeSection()">رجوع</button>
             <p id="adminLoginError" class="error-msg"></p>
         </div>
 
+        <!-- لوحة تحكم الأدمن -->
         <div id="adminDashboard" class="card hidden wide">
             <div class="admin-header">
                 <h2>لوحة تحكم المدير (الأدمن)</h2>
                 <button class="btn-danger" onclick="logout()">تسجيل خروج</button>
             </div>
 
+            <!-- إعدادات الشركة والموقع الجغرافي -->
             <div class="card-inner">
                 <h3>⚙️ إعدادات الشركة والموقع الجغرافي</h3>
                 <div class="grid-inputs">
@@ -76,24 +88,29 @@
                         <input type="text" id="settingCompanyCode">
                     </div>
                     <div>
+                        <label>كلمة سر الأدمن:</label>
+                        <input type="password" id="settingAdminPassword">
+                    </div>
+                    <div>
                         <label>خط العرض (Latitude):</label>
-                        <input type="number" step="any" id="settingLat" placeholder="31.9539">
+                        <input type="number" step="any" id="settingLat">
                     </div>
                     <div>
                         <label>خط الطول (Longitude):</label>
-                        <input type="number" step="any" id="settingLng" placeholder="35.9106">
+                        <input type="number" step="any" id="settingLng">
                     </div>
                     <div>
                         <label>النطاق المسموح (بالمتر):</label>
-                        <input type="number" id="settingRadius" placeholder="100">
+                        <input type="number" id="settingRadius">
                     </div>
                 </div>
-                <button onclick="getCurrentLocationForAdmin()">جلب موقعي الحالي كـ موقع للشركة📍</button>
-                <button class="btn-success" onclick="saveCompanySettings()">حفظ الإعدادات</button>
+                <button class="btn-secondary" onclick="getCurrentLocationForAdmin()">تحديد موقعي الحالي كـ موقع للشركة📍</button>
+                <button class="btn-success" onclick="saveCompanySettings()">حفظ الإعدادات السحابية</button>
             </div>
 
+            <!-- إضافة موظف جديد -->
             <div class="card-inner">
-                <h3>👤 إضافة موظف جديد</h3>
+                <h3>👤 إضافة موظف جديد يدوياً</h3>
                 <form onsubmit="adminAddEmployee(event)" class="grid-inputs">
                     <input type="text" id="newEmpName" placeholder="الاسم الرباعي" required>
                     <input type="text" id="newEmpId" placeholder="رقم الهوية" required>
@@ -103,6 +120,7 @@
                 </form>
             </div>
 
+            <!-- تقارير واستخراج PDF -->
             <div class="card-inner">
                 <h3>📄 تصدير تقرير الدوام (PDF)</h3>
                 <div class="grid-inputs">
@@ -122,8 +140,9 @@
                 <button class="btn-primary" onclick="generatePDFReport()">طباعة تقرير PDF 🖨️</button>
             </div>
 
+            <!-- جدول سجلات دوام الموظفين مع إمكانية التعديل -->
             <div class="card-inner">
-                <h3>📊 سجلات دوام الموظفين (إمكانية التعديل)</h3>
+                <h3>📊 سجلات دوام الموظفين (مباشر من الهواتف مع إمكانية التعديل)</h3>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -133,11 +152,12 @@
                                 <th>وقت الحضور</th>
                                 <th>وقت الانصراف</th>
                                 <th>الحالة</th>
-                                <th>إجراءات (تعديل)</th>
+                                <th>إجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="attendanceTableBody">
-                            </tbody>
+                            <!-- ملء ديناميكي -->
+                        </tbody>
                     </table>
                 </div>
             </div>
