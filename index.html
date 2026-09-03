@@ -5,18 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>دوامي | إدارة حضور الموظفين</title>
-
-    <meta name="description" content="دوامي - نظام سحابي لإدارة حضور وانصراف الموظفين">
     <meta name="theme-color" content="#0f766e">
+    <meta name="description" content="دوامي - نظام إدارة وحضور الموظفين">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-    >
+    <title>دوامي | نظام إدارة وحضور الموظفين</title>
 
     <link rel="stylesheet" href="styles.css">
 
@@ -31,175 +23,152 @@
 
 <body>
 
-    <!-- Background -->
-    <div class="page-background"></div>
+<div class="app-shell">
 
-    <main class="app-container">
+    <!-- =========================
+         LOGIN / COMPANY CODE
+    ========================== -->
+    <section id="companyCodeSection" class="auth-page">
 
-        <!-- =========================
-             LOGIN
-        ========================== -->
+        <div class="auth-decoration decoration-one"></div>
+        <div class="auth-decoration decoration-two"></div>
 
-        <section id="companyCodeSection" class="screen-card login-card">
+        <div class="auth-card">
 
-            <div class="brand-area">
-                <div class="brand-logo">
+            <div class="brand">
+                <div class="brand-icon">
                     <span>د</span>
                 </div>
 
                 <div>
                     <h1>دوامي</h1>
-                    <p>إدارة حضور الموظفين بسهولة</p>
+                    <p>نظام إدارة حضور الموظفين</p>
                 </div>
             </div>
 
-            <div class="login-content">
-
-                <div class="section-title">
-                    <span class="title-icon">👋</span>
-
-                    <div>
-                        <h2>أهلاً بك</h2>
-                        <p>أدخل كود الشركة للمتابعة إلى نظام الدوام</p>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="companyCodeInput">كود الشركة</label>
-
-                    <div class="input-wrapper">
-                        <span class="input-icon">🏢</span>
-
-                        <input
-                            type="text"
-                            id="companyCodeInput"
-                            placeholder="مثال: COMP123"
-                            autocomplete="off"
-                        >
-                    </div>
-                </div>
-
-                <button class="main-button" onclick="verifyCompanyCode()">
-                    <span>دخول للنظام</span>
-                    <span>←</span>
-                </button>
-
-                <div class="divider">
-                    <span>أو</span>
-                </div>
-
-                <button
-                    class="secondary-button"
-                    onclick="showAdminLogin()"
-                >
-                    <span>⚙️</span>
-                    دخول المدير
-                </button>
-
-                <p id="codeError" class="error-msg"></p>
-
+            <div class="auth-heading">
+                <span class="small-label">مرحباً بك 👋</span>
+                <h2>ابدأ دوامك بسهولة</h2>
+                <p>
+                    أدخل كود الشركة للوصول إلى نظام الحضور والانصراف.
+                </p>
             </div>
 
-            <div class="login-footer">
-                <span>🔒</span>
-                نظام سحابي لإدارة الحضور والانصراف
+            <div class="form-group">
+                <label for="companyCodeInput">كود الشركة</label>
+
+                <div class="input-with-icon">
+                    <span>🏢</span>
+                    <input
+                        type="text"
+                        id="companyCodeInput"
+                        placeholder="مثال: COMP123"
+                        autocomplete="organization"
+                    >
+                </div>
             </div>
 
-        </section>
+            <button class="btn btn-primary btn-large" onclick="verifyCompanyCode()">
+                دخول إلى النظام
+                <span>←</span>
+            </button>
+
+            <p id="codeError" class="error-msg"></p>
+
+            <div class="auth-divider">
+                <span>أو</span>
+            </div>
+
+            <button class="btn btn-light" onclick="showAdminLogin()">
+                <span>⚙️</span>
+                دخول المدير
+            </button>
+
+            <div class="auth-footer">
+                <span>نظام دوامي</span>
+                <span>•</span>
+                <span>إدارة أسهل للدوام</span>
+            </div>
+
+        </div>
+    </section>
 
 
-        <!-- =========================
-             EMPLOYEE REGISTRATION
-        ========================== -->
+    <!-- =========================
+         EMPLOYEE REGISTRATION
+    ========================== -->
+    <section id="employeeRegistrationSection" class="page-section hidden">
 
-        <section
-            id="employeeRegistrationSection"
-            class="screen-card hidden"
-        >
-
-            <div class="page-header">
-
-                <button
-                    class="icon-button"
-                    onclick="showCompanyCodeSection()"
-                    title="رجوع"
-                >
-                    →
-                </button>
+        <div class="simple-topbar">
+            <div class="brand brand-small">
+                <div class="brand-icon">
+                    <span>د</span>
+                </div>
 
                 <div>
-                    <span class="eyebrow">خطوة واحدة فقط</span>
-                    <h2>إكمال بيانات الموظف</h2>
-                    <p>هذه البيانات يتم تسجيلها لأول مرة فقط</p>
+                    <strong>دوامي</strong>
+                    <small>تسجيل الموظف</small>
                 </div>
+            </div>
+        </div>
 
-                <div class="header-icon">
-                    👤
-                </div>
+        <div class="content-wrapper narrow">
 
+            <div class="section-heading centered">
+                <span class="section-icon">👤</span>
+                <span class="small-label">الخطوة الأخيرة</span>
+
+                <h2>أكمل بياناتك</h2>
+
+                <p>
+                    أدخل بياناتك مرة واحدة حتى يتم إنشاء ملف الموظف الخاص بك.
+                </p>
             </div>
 
-            <form
-                id="empRegisterForm"
-                onsubmit="saveEmployeeProfile(event)"
-                class="modern-form"
-            >
+            <div class="modern-card">
 
-                <div class="form-grid">
+                <form id="empRegisterForm" onsubmit="saveEmployeeProfile(event)">
 
-                    <div class="form-group">
-                        <label for="empFullName">الاسم الرباعي</label>
+                    <div class="form-grid">
 
-                        <div class="input-wrapper">
-                            <span class="input-icon">👤</span>
+                        <div class="form-group">
+                            <label for="empFullName">الاسم الرباعي</label>
 
                             <input
                                 type="text"
                                 id="empFullName"
                                 placeholder="أدخل الاسم الكامل"
+                                autocomplete="name"
                                 required
                             >
                         </div>
-                    </div>
 
-
-                    <div class="form-group">
-                        <label for="empNationalId">رقم الهوية</label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">🪪</span>
+                        <div class="form-group">
+                            <label for="empNationalId">رقم الهوية</label>
 
                             <input
                                 type="text"
                                 id="empNationalId"
-                                placeholder="رقم الهوية"
+                                placeholder="أدخل رقم الهوية"
+                                inputmode="numeric"
                                 required
                             >
                         </div>
-                    </div>
 
-
-                    <div class="form-group">
-                        <label for="empPhone">رقم الهاتف</label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">📱</span>
+                        <div class="form-group">
+                            <label for="empPhone">رقم الهاتف</label>
 
                             <input
                                 type="tel"
                                 id="empPhone"
-                                placeholder="059xxxxxxx"
+                                placeholder="05XXXXXXXX"
+                                autocomplete="tel"
                                 required
                             >
                         </div>
-                    </div>
 
-
-                    <div class="form-group">
-                        <label for="empJobTitle">المسمى الوظيفي</label>
-
-                        <div class="input-wrapper">
-                            <span class="input-icon">💼</span>
+                        <div class="form-group">
+                            <label for="empJobTitle">المسمى الوظيفي</label>
 
                             <input
                                 type="text"
@@ -208,859 +177,697 @@
                                 required
                             >
                         </div>
+
                     </div>
 
-                </div>
+                    <button type="submit" class="btn btn-success btn-large">
+                        حفظ والدخول للنظام
+                        <span>✓</span>
+                    </button>
 
-                <div class="info-box">
-                    <span>ℹ️</span>
-
-                    <div>
-                        <strong>معلومة مهمة</strong>
-                        <p>
-                            سيتم استخدام بياناتك لربط سجل الحضور الخاص بك
-                            بحساب الموظف في الشركة.
-                        </p>
-                    </div>
-                </div>
-
-                <button type="submit" class="success-button">
-                    <span>حفظ ودخول للنظام</span>
-                    <span>✓</span>
-                </button>
-
-            </form>
-
-        </section>
-
-
-        <!-- =========================
-             EMPLOYEE DASHBOARD
-        ========================== -->
-
-        <section
-            id="employeeDashboard"
-            class="hidden employee-dashboard"
-        >
-
-            <div class="dashboard-topbar">
-
-                <div class="brand-mini">
-                    <div class="mini-logo">د</div>
-
-                    <div>
-                        <strong>دوامي</strong>
-                        <span>نظام الحضور</span>
-                    </div>
-                </div>
-
-                <button
-                    class="logout-button"
-                    onclick="logout()"
-                >
-                    <span>تسجيل خروج</span>
-                    <span>↪</span>
-                </button>
+                </form>
 
             </div>
+        </div>
+    </section>
 
 
+    <!-- =========================
+         EMPLOYEE DASHBOARD
+    ========================== -->
+    <section id="employeeDashboard" class="page-section hidden">
+
+        <header class="topbar">
+
+            <div class="brand brand-small">
+                <div class="brand-icon">
+                    <span>د</span>
+                </div>
+
+                <div>
+                    <strong>دوامي</strong>
+                    <small>لوحة الموظف</small>
+                </div>
+            </div>
+
+            <button class="icon-btn logout-icon" onclick="logout()" title="تسجيل خروج">
+                ⇥
+            </button>
+
+        </header>
+
+
+        <main class="content-wrapper">
+
+            <!-- Welcome -->
             <div class="welcome-card">
 
-                <div class="welcome-text">
+                <div class="welcome-content">
 
-                    <span class="eyebrow">لوحة الموظف</span>
+                    <span class="small-label">لوحة الموظف</span>
 
-                    <h1>
+                    <h2>
                         أهلاً بك،
-                        <span id="welcomeEmpName">الموظف</span>
-                    </h1>
+                        <span id="welcomeEmpName"></span>
+                    </h2>
 
                     <div class="employee-role">
                         <span>💼</span>
-                        <span id="welcomeEmpTitle">موظف</span>
+                        <span id="welcomeEmpTitle"></span>
                     </div>
 
                 </div>
 
                 <div class="welcome-avatar">
-                    <span id="employeeInitial">د</span>
+                    👤
                 </div>
 
             </div>
 
 
             <!-- Location -->
+            <div class="status-card">
 
-            <div class="location-card">
-
-                <div class="location-icon">
+                <div class="status-icon location">
                     📍
                 </div>
 
-                <div class="location-info">
+                <div class="status-content">
+                    <strong>الموقع الجغرافي</strong>
 
-                    <span class="small-label">
-                        حالة الموقع
+                    <span id="locationStatus">
+                        جاري فحص الموقع الجغرافي...
                     </span>
-
-                    <strong id="locationStatus">
-                        جاري فحص الموقع...
-                    </strong>
-
-                    <span id="locationDistance"></span>
-
                 </div>
 
-                <button
-                    class="refresh-location"
-                    onclick="checkEmployeeLocation()"
-                    title="تحديث الموقع"
-                >
-                    ↻
-                </button>
+                <div class="status-dot"></div>
 
             </div>
 
 
-            <!-- Attendance Status -->
+            <!-- Attendance -->
+            <div class="attendance-card">
 
-            <div class="attendance-status-card">
-
-                <div class="status-header">
+                <div class="section-heading">
 
                     <div>
-                        <span class="small-label">
-                            حالة دوامك اليوم
+                        <span class="small-label">الحضور والانصراف</span>
+                        <h3>سجل دوامك اليوم</h3>
+                    </div>
+
+                    <div class="live-badge">
+                        <span></span>
+                        مباشر
+                    </div>
+
+                </div>
+
+
+                <div class="attendance-actions">
+
+                    <button
+                        id="btnClockIn"
+                        class="attendance-btn clock-in"
+                        onclick="clockIn()"
+                    >
+                        <span class="attendance-btn-icon">🟢</span>
+
+                        <span>
+                            <strong>تسجيل حضور</strong>
+                            <small>ابدأ دوامك الآن</small>
                         </span>
 
-                        <h3 id="todayStatus">
-                            لم يتم تسجيل الحضور
-                        </h3>
-                    </div>
+                        <span class="arrow">←</span>
+                    </button>
 
-                    <div
-                        id="todayStatusIcon"
-                        class="status-icon neutral"
+
+                    <button
+                        id="btnClockOut"
+                        class="attendance-btn clock-out"
+                        onclick="clockOut()"
                     >
-                        ⏱
-                    </div>
+                        <span class="attendance-btn-icon">🔴</span>
 
-                </div>
+                        <span>
+                            <strong>تسجيل انصراف</strong>
+                            <small>إنهاء دوامك الآن</small>
+                        </span>
 
-                <div class="time-grid">
-
-                    <div class="time-box">
-                        <span>🟢 الحضور</span>
-                        <strong id="todayClockIn">--:--</strong>
-                    </div>
-
-                    <div class="time-box">
-                        <span>🔴 الانصراف</span>
-                        <strong id="todayClockOut">--:--</strong>
-                    </div>
-
-                    <div class="time-box">
-                        <span>⏱ مدة الدوام</span>
-                        <strong id="todayDuration">--</strong>
-                    </div>
+                        <span class="arrow">←</span>
+                    </button>
 
                 </div>
 
             </div>
 
 
-            <!-- Action Buttons -->
+            <button class="btn btn-outline logout-btn" onclick="logout()">
+                تسجيل الخروج
+            </button>
 
-            <div class="clock-actions">
+        </main>
 
-                <button
-                    id="btnClockIn"
-                    class="clock-button clock-in"
-                    onclick="clockIn()"
-                >
-                    <div class="clock-button-icon">🟢</div>
-
-                    <div>
-                        <strong>تسجيل حضور</strong>
-                        <span>ابدأ دوامك الآن</span>
-                    </div>
-
-                    <span class="arrow">←</span>
-                </button>
+    </section>
 
 
-                <button
-                    id="btnClockOut"
-                    class="clock-button clock-out"
-                    onclick="clockOut()"
-                >
-                    <div class="clock-button-icon">🔴</div>
+    <!-- =========================
+         ADMIN LOGIN
+    ========================== -->
+    <section id="adminLoginSection" class="auth-page hidden">
 
-                    <div>
-                        <strong>تسجيل انصراف</strong>
-                        <span>إنهاء دوامك اليوم</span>
-                    </div>
+        <div class="auth-card">
 
-                    <span class="arrow">←</span>
-                </button>
+            <div class="brand">
+                <div class="brand-icon admin">
+                    ⚙️
+                </div>
 
+                <div>
+                    <h1>دوامي</h1>
+                    <p>لوحة تحكم المدير</p>
+                </div>
             </div>
 
+            <div class="auth-heading">
+                <span class="small-label">منطقة آمنة</span>
 
-            <div class="dashboard-note">
-                <span>💡</span>
-                يجب أن تكون داخل نطاق الشركة المحدد حتى يتم تسجيل الحضور أو الانصراف.
+                <h2>دخول الأدمن</h2>
+
+                <p>
+                    أدخل كلمة مرور المدير للوصول إلى إعدادات الشركة والموظفين.
+                </p>
             </div>
 
-        </section>
-
-
-        <!-- =========================
-             ADMIN LOGIN
-        ========================== -->
-
-        <section
-            id="adminLoginSection"
-            class="screen-card admin-login-card hidden"
-        >
-
-            <div class="admin-login-icon">
-                ⚙️
-            </div>
-
-            <span class="eyebrow">
-                لوحة الإدارة
-            </span>
-
-            <h2>دخول المدير</h2>
-
-            <p>
-                أدخل كلمة المرور للوصول إلى إدارة الموظفين وسجلات الدوام.
-            </p>
 
             <div class="form-group">
 
                 <label for="adminPasswordInput">
-                    كلمة المرور
+                    كلمة مرور الأدمن
                 </label>
 
-                <div class="input-wrapper">
-                    <span class="input-icon">🔐</span>
+                <div class="input-with-icon">
+                    <span>🔐</span>
 
                     <input
                         type="password"
                         id="adminPasswordInput"
                         placeholder="أدخل كلمة المرور"
-                        onkeydown="if(event.key === 'Enter') loginAdmin()"
+                        autocomplete="current-password"
                     >
                 </div>
 
             </div>
 
-            <button
-                class="main-button"
-                onclick="loginAdmin()"
-            >
+
+            <button class="btn btn-primary btn-large" onclick="loginAdmin()">
                 دخول لوحة التحكم
                 <span>←</span>
             </button>
 
-            <button
-                class="text-button"
-                onclick="showCompanyCodeSection()"
-            >
-                ← العودة لتسجيل الموظفين
+            <button class="btn btn-light" onclick="showCompanyCodeSection()">
+                العودة لتسجيل الموظف
             </button>
 
             <p id="adminLoginError" class="error-msg"></p>
 
-        </section>
+        </div>
+
+    </section>
 
 
-        <!-- =========================
-             ADMIN DASHBOARD
-        ========================== -->
+    <!-- =========================
+         ADMIN DASHBOARD
+    ========================== -->
+    <section id="adminDashboard" class="page-section hidden">
 
-        <section
-            id="adminDashboard"
-            class="admin-dashboard hidden"
-        >
+        <header class="admin-topbar">
 
-            <!-- Topbar -->
+            <div class="brand brand-small">
 
-            <header class="admin-topbar">
+                <div class="brand-icon">
+                    <span>د</span>
+                </div>
 
-                <div class="brand-mini">
+                <div>
+                    <strong>دوامي</strong>
+                    <small>لوحة تحكم المدير</small>
+                </div>
 
-                    <div class="mini-logo">
-                        د
+            </div>
+
+
+            <button class="btn btn-danger top-logout" onclick="logout()">
+                تسجيل خروج
+            </button>
+
+        </header>
+
+
+        <main class="content-wrapper wide-content">
+
+            <!-- Header -->
+            <div class="dashboard-heading">
+
+                <div>
+                    <span class="small-label">الإدارة</span>
+                    <h2>لوحة التحكم</h2>
+                    <p>إدارة الموظفين والدوام وإعدادات الشركة من مكان واحد.</p>
+                </div>
+
+                <div class="dashboard-date">
+                    <span>📅</span>
+                    <span>نظام إدارة الدوام</span>
+                </div>
+
+            </div>
+
+
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon employees">
+                        👥
                     </div>
 
                     <div>
-                        <strong>دوامي</strong>
-                        <span>لوحة الإدارة</span>
+                        <small>الموظفون</small>
+                        <strong id="totalEmployeesStat">—</strong>
                     </div>
 
                 </div>
 
-                <div class="admin-top-actions">
 
-                    <span class="online-badge">
-                        <span></span>
-                        متصل
-                    </span>
+                <div class="stat-card">
+
+                    <div class="stat-icon attendance">
+                        🟢
+                    </div>
+
+                    <div>
+                        <small>الحضور اليوم</small>
+                        <strong id="todayAttendanceStat">—</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon records">
+                        📊
+                    </div>
+
+                    <div>
+                        <small>السجلات</small>
+                        <strong id="totalRecordsStat">—</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Company Settings -->
+            <div class="admin-card">
+
+                <div class="admin-card-header">
+
+                    <div class="admin-card-title">
+
+                        <div class="card-title-icon">
+                            ⚙️
+                        </div>
+
+                        <div>
+                            <h3>إعدادات الشركة</h3>
+                            <p>بيانات الشركة والموقع الجغرافي المسموح للدوام.</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+
+                        <label for="settingCompanyCode">
+                            كود الشركة
+                        </label>
+
+                        <input
+                            type="text"
+                            id="settingCompanyCode"
+                            placeholder="COMP123"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="settingAdminPassword">
+                            كلمة سر الأدمن
+                        </label>
+
+                        <input
+                            type="password"
+                            id="settingAdminPassword"
+                            placeholder="كلمة المرور"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="settingLat">
+                            خط العرض
+                        </label>
+
+                        <input
+                            type="number"
+                            step="any"
+                            id="settingLat"
+                            placeholder="31.9000"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="settingLng">
+                            خط الطول
+                        </label>
+
+                        <input
+                            type="number"
+                            step="any"
+                            id="settingLng"
+                            placeholder="35.2000"
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="settingRadius">
+                            النطاق المسموح
+                            <span class="label-muted">(بالمتر)</span>
+                        </label>
+
+                        <input
+                            type="number"
+                            id="settingRadius"
+                            placeholder="100"
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <div class="button-row">
 
                     <button
-                        class="logout-button"
-                        onclick="logout()"
+                        class="btn btn-light"
+                        onclick="getCurrentLocationForAdmin()"
                     >
-                        تسجيل خروج
+                        📍 تحديد موقعي الحالي
+                    </button>
+
+                    <button
+                        class="btn btn-success"
+                        onclick="saveCompanySettings()"
+                    >
+                        ✓ حفظ الإعدادات
                     </button>
 
                 </div>
 
-            </header>
-
-
-            <!-- Header -->
-
-            <div class="admin-heading">
-
-                <div>
-
-                    <span class="eyebrow">
-                        إدارة النظام
-                    </span>
-
-                    <h1>
-                        لوحة تحكم المدير
-                    </h1>
-
-                    <p>
-                        تحكم ببيانات الشركة والموظفين وسجلات الحضور.
-                    </p>
-
-                </div>
-
-                <div class="admin-date" id="adminCurrentDate">
-                    --
-                </div>
-
             </div>
 
 
-            <!-- Stats -->
+            <!-- Add Employee -->
+            <div class="admin-card">
 
-            <div class="stats-grid">
+                <div class="admin-card-header">
 
-                <div class="stat-card">
-                    <div class="stat-icon blue">👥</div>
+                    <div class="admin-card-title">
 
-                    <div>
-                        <span>الموظفون</span>
-                        <strong id="statEmployees">0</strong>
-                    </div>
-                </div>
-
-
-                <div class="stat-card">
-                    <div class="stat-icon green">🟢</div>
-
-                    <div>
-                        <span>حضور اليوم</span>
-                        <strong id="statPresent">0</strong>
-                    </div>
-                </div>
-
-
-                <div class="stat-card">
-                    <div class="stat-icon orange">⏱</div>
-
-                    <div>
-                        <span>لم ينصرفوا</span>
-                        <strong id="statActive">0</strong>
-                    </div>
-                </div>
-
-
-                <div class="stat-card">
-                    <div class="stat-icon purple">📊</div>
-
-                    <div>
-                        <span>سجلات الدوام</span>
-                        <strong id="statRecords">0</strong>
-                    </div>
-                </div>
-
-            </div>
-
-
-            <!-- Admin Navigation -->
-
-            <div class="admin-tabs">
-
-                <button
-                    class="admin-tab active"
-                    onclick="switchAdminTab('attendance', this)"
-                >
-                    📊 سجلات الدوام
-                </button>
-
-                <button
-                    class="admin-tab"
-                    onclick="switchAdminTab('employees', this)"
-                >
-                    👥 الموظفون
-                </button>
-
-                <button
-                    class="admin-tab"
-                    onclick="switchAdminTab('settings', this)"
-                >
-                    ⚙️ إعدادات الشركة
-                </button>
-
-                <button
-                    class="admin-tab"
-                    onclick="switchAdminTab('reports', this)"
-                >
-                    📄 التقارير
-                </button>
-
-            </div>
-
-
-            <!-- =========================
-                 ATTENDANCE TAB
-            ========================== -->
-
-            <div
-                id="adminTabAttendance"
-                class="admin-tab-content active"
-            >
-
-                <div class="content-card">
-
-                    <div class="content-card-header">
+                        <div class="card-title-icon">
+                            👤
+                        </div>
 
                         <div>
-                            <h2>سجلات الدوام</h2>
-                            <p>
-                                متابعة وتعديل سجلات حضور وانصراف الموظفين.
-                            </p>
+                            <h3>إضافة موظف جديد</h3>
+                            <p>أضف موظفاً إلى نظام الشركة يدوياً.</p>
                         </div>
-
-                        <button
-                            class="refresh-button"
-                            onclick="loadAdminData()"
-                        >
-                            ↻ تحديث
-                        </button>
 
                     </div>
 
+                </div>
 
-                    <div class="table-tools">
 
-                        <div class="search-box">
-                            <span>🔎</span>
+                <form
+                    onsubmit="adminAddEmployee(event)"
+                    class="form-grid"
+                >
 
-                            <input
-                                type="text"
-                                id="attendanceSearch"
-                                placeholder="ابحث باسم الموظف..."
-                                oninput="filterAttendanceTable()"
-                            >
-                        </div>
+                    <div class="form-group">
+
+                        <label for="newEmpName">
+                            الاسم الرباعي
+                        </label>
 
                         <input
-                            type="date"
-                            id="attendanceDateFilter"
-                            onchange="filterAttendanceTable()"
+                            type="text"
+                            id="newEmpName"
+                            placeholder="الاسم الكامل"
+                            required
                         >
 
                     </div>
 
 
-                    <div class="table-wrapper">
+                    <div class="form-group">
 
-                        <table>
+                        <label for="newEmpId">
+                            رقم الهوية
+                        </label>
 
-                            <thead>
-                                <tr>
-                                    <th>الموظف</th>
-                                    <th>التاريخ</th>
-                                    <th>الحضور</th>
-                                    <th>الانصراف</th>
-                                    <th>المدة</th>
-                                    <th>الحالة</th>
-                                    <th>الإجراءات</th>
-                                </tr>
-                            </thead>
-
-                            <tbody id="attendanceTableBody">
-                            </tbody>
-
-                        </table>
-
-                        <div
-                            id="emptyAttendance"
-                            class="empty-state hidden"
+                        <input
+                            type="text"
+                            id="newEmpId"
+                            placeholder="رقم الهوية"
+                            required
                         >
-                            <div>📭</div>
-                            <h3>لا توجد سجلات</h3>
-                            <p>لم يتم العثور على سجلات مطابقة للبحث.</p>
-                        </div>
 
                     </div>
 
-                </div>
 
-            </div>
+                    <div class="form-group">
 
+                        <label for="newEmpPhone">
+                            رقم الهاتف
+                        </label>
 
-            <!-- =========================
-                 EMPLOYEES TAB
-            ========================== -->
-
-            <div
-                id="adminTabEmployees"
-                class="admin-tab-content"
-            >
-
-                <div class="content-card">
-
-                    <div class="content-card-header">
-
-                        <div>
-                            <h2>إضافة موظف جديد</h2>
-                            <p>
-                                أضف موظفاً إلى قاعدة بيانات الشركة.
-                            </p>
-                        </div>
+                        <input
+                            type="tel"
+                            id="newEmpPhone"
+                            placeholder="05XXXXXXXX"
+                            required
+                        >
 
                     </div>
 
-                    <form
-                        onsubmit="adminAddEmployee(event)"
-                        class="employee-add-form"
-                    >
 
-                        <div class="form-grid">
+                    <div class="form-group">
 
-                            <div class="form-group">
-                                <label>الاسم الرباعي</label>
+                        <label for="newEmpTitle">
+                            المسمى الوظيفي
+                        </label>
 
-                                <input
-                                    type="text"
-                                    id="newEmpName"
-                                    placeholder="الاسم الكامل"
-                                    required
-                                >
-                            </div>
+                        <input
+                            type="text"
+                            id="newEmpTitle"
+                            placeholder="مثال: محاسب"
+                            required
+                        >
 
-                            <div class="form-group">
-                                <label>رقم الهوية</label>
+                    </div>
 
-                                <input
-                                    type="text"
-                                    id="newEmpId"
-                                    placeholder="رقم الهوية"
-                                    required
-                                >
-                            </div>
 
-                            <div class="form-group">
-                                <label>رقم الهاتف</label>
-
-                                <input
-                                    type="tel"
-                                    id="newEmpPhone"
-                                    placeholder="رقم الهاتف"
-                                    required
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label>المسمى الوظيفي</label>
-
-                                <input
-                                    type="text"
-                                    id="newEmpTitle"
-                                    placeholder="المسمى الوظيفي"
-                                    required
-                                >
-                            </div>
-
-                        </div>
+                    <div class="form-group form-submit">
 
                         <button
                             type="submit"
-                            class="success-button small"
+                            class="btn btn-primary"
                         >
                             + إضافة الموظف
                         </button>
 
-                    </form>
-
-                </div>
-
-
-                <div class="content-card">
-
-                    <div class="content-card-header">
-
-                        <div>
-                            <h2>قائمة الموظفين</h2>
-                            <p>
-                                جميع الموظفين المسجلين في النظام.
-                            </p>
-                        </div>
-
-                        <span
-                            class="count-badge"
-                            id="employeeCountBadge"
-                        >
-                            0 موظف
-                        </span>
-
                     </div>
 
-                    <div
-                        id="employeesList"
-                        class="employees-list"
-                    >
-                    </div>
-
-                </div>
+                </form>
 
             </div>
 
 
-            <!-- =========================
-                 SETTINGS TAB
-            ========================== -->
+            <!-- PDF Reports -->
+            <div class="admin-card">
 
-            <div
-                id="adminTabSettings"
-                class="admin-tab-content"
-            >
+                <div class="admin-card-header">
 
-                <div class="content-card">
+                    <div class="admin-card-title">
 
-                    <div class="content-card-header">
+                        <div class="card-title-icon">
+                            📄
+                        </div>
 
                         <div>
-                            <h2>إعدادات الشركة</h2>
-                            <p>
-                                بيانات الدخول وموقع الشركة ونطاق السماح.
-                            </p>
+                            <h3>تقارير الدوام</h3>
+                            <p>استخراج تقرير دوام الموظف بصيغة PDF.</p>
                         </div>
-
-                        <div class="settings-icon">
-                            ⚙️
-                        </div>
-
-                    </div>
-
-
-                    <div class="settings-form">
-
-                        <div class="form-grid">
-
-                            <div class="form-group">
-                                <label>كود الشركة</label>
-
-                                <input
-                                    type="text"
-                                    id="settingCompanyCode"
-                                    placeholder="COMP123"
-                                >
-                            </div>
-
-
-                            <div class="form-group">
-                                <label>كلمة سر الأدمن</label>
-
-                                <input
-                                    type="password"
-                                    id="settingAdminPassword"
-                                    placeholder="كلمة المرور"
-                                >
-                            </div>
-
-
-                            <div class="form-group">
-                                <label>خط العرض Latitude</label>
-
-                                <input
-                                    type="number"
-                                    step="any"
-                                    id="settingLat"
-                                    placeholder="31.9539"
-                                >
-                            </div>
-
-
-                            <div class="form-group">
-                                <label>خط الطول Longitude</label>
-
-                                <input
-                                    type="number"
-                                    step="any"
-                                    id="settingLng"
-                                    placeholder="35.9106"
-                                >
-                            </div>
-
-
-                            <div class="form-group">
-                                <label>النطاق المسموح بالمتر</label>
-
-                                <input
-                                    type="number"
-                                    id="settingRadius"
-                                    min="10"
-                                    placeholder="100"
-                                >
-                            </div>
-
-                        </div>
-
-
-                        <div class="location-setting-box">
-
-                            <div>
-                                <span class="location-setting-icon">
-                                    📍
-                                </span>
-
-                                <div>
-                                    <strong>
-                                        موقع الشركة
-                                    </strong>
-
-                                    <p>
-                                        يمكنك استخدام موقع جهازك الحالي
-                                        كنقطة الشركة.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <button
-                                class="secondary-button small"
-                                onclick="getCurrentLocationForAdmin()"
-                            >
-                                استخدام موقعي الحالي
-                            </button>
-
-                        </div>
-
-
-                        <button
-                            class="success-button"
-                            onclick="saveCompanySettings()"
-                        >
-                            حفظ إعدادات الشركة
-                        </button>
 
                     </div>
 
                 </div>
 
-            </div>
 
-
-            <!-- =========================
-                 REPORTS TAB
-            ========================== -->
-
-            <div
-                id="adminTabReports"
-                class="admin-tab-content"
-            >
-
-                <div class="content-card report-card">
-
-                    <div class="report-icon">
-                        📄
-                    </div>
-
-                    <div class="content-card-header">
-
-                        <div>
-                            <h2>تصدير تقرير الدوام</h2>
-
-                            <p>
-                                أنشئ تقرير PDF لسجلات الموظفين خلال الفترة المحددة.
-                            </p>
-                        </div>
-
-                    </div>
-
+                <div class="report-box">
 
                     <div class="form-grid">
 
                         <div class="form-group">
-                            <label>الموظف</label>
+
+                            <label for="pdfEmpSelect">
+                                الموظف
+                            </label>
 
                             <select id="pdfEmpSelect">
-                                <option value="ALL">
-                                    جميع الموظفين
-                                </option>
+                                <option value="">اختر الموظف</option>
                             </select>
+
                         </div>
 
 
                         <div class="form-group">
-                            <label>من تاريخ</label>
+
+                            <label for="pdfStartDate">
+                                من تاريخ
+                            </label>
 
                             <input
                                 type="date"
                                 id="pdfStartDate"
                             >
+
                         </div>
 
 
                         <div class="form-group">
-                            <label>إلى تاريخ</label>
+
+                            <label for="pdfEndDate">
+                                إلى تاريخ
+                            </label>
 
                             <input
                                 type="date"
                                 id="pdfEndDate"
                             >
+
                         </div>
 
                     </div>
 
 
                     <button
-                        class="main-button"
+                        class="btn btn-primary"
                         onclick="generatePDFReport()"
                     >
-                        <span>إنشاء تقرير PDF</span>
-                        <span>📥</span>
+                        🖨️ إنشاء تقرير PDF
                     </button>
 
                 </div>
 
             </div>
 
-        </section>
 
-    </main>
+            <!-- Attendance Records -->
+            <div class="admin-card">
+
+                <div class="admin-card-header">
+
+                    <div class="admin-card-title">
+
+                        <div class="card-title-icon">
+                            📊
+                        </div>
+
+                        <div>
+                            <h3>سجلات الدوام</h3>
+                            <p>السجلات المسجلة من هواتف الموظفين مع إمكانية التعديل.</p>
+                        </div>
+
+                    </div>
 
 
-    <!-- Toast -->
+                    <div class="live-badge">
+                        <span></span>
+                        مباشر
+                    </div>
 
-    <div
-        id="toastContainer"
-        class="toast-container"
-    ></div>
+                </div>
 
 
-    <script src="app.js"></script>
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+                                <th>الموظف</th>
+                                <th>التاريخ</th>
+                                <th>الحضور</th>
+                                <th>الانصراف</th>
+                                <th>الحالة</th>
+                                <th>إجراءات</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="attendanceTableBody">
+                            <!-- Dynamic -->
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <footer class="dashboard-footer">
+                <span>دوامي</span>
+                <span>•</span>
+                <span>نظام إدارة حضور الموظفين</span>
+            </footer>
+
+        </main>
+
+    </section>
+
+</div>
+
+
+<script src="app.js"></script>
 
 </body>
 </html>
