@@ -1,4 +1,4 @@
-
+// البيانات الأساسية لجميع الموظفين الـ 61
 const defaultEmployees = [
   { code: "1001", id: 1, name: "زياد فتحي احمد حسن", nationalId: "401000001", phone: "0599000001", salary: "5500", rate: "0.00", status: "على رأس العمل", breakTime: "0 دقيقة" },
   { code: "1002", id: 2, name: "عهد جمعه فؤاد سمحان", nationalId: "401000002", phone: "0599000002", salary: "6000", rate: "0.00", status: "على رأس العمل", breakTime: "0 دقيقة" },
@@ -63,7 +63,6 @@ const defaultEmployees = [
   { code: "1061", id: 61, name: "عمر ظافر عطا الله", nationalId: "401000061", phone: "0599000061", salary: "2400", rate: "11.11", status: "على رأس العمل", breakTime: "0 دقيقة" }
 ];
 
-// استرجاع البيانات المعدلة إن وجدت أو استخدام البيانات الافتراضية
 function getEmployees() {
   const saved = localStorage.getItem('dawami_employees_list');
   if (saved) return JSON.parse(saved);
@@ -76,8 +75,117 @@ function saveEmployeesData(data) {
 }
 
 let currentEmployee = null;
+let isOnBreak = false;
 
-// تحميل بيانات المدير
+document.addEventListener('DOMContentLoaded', () => {
+  const loginSec = document.getElementById('loginSection');
+  if (loginSec) {
+    const savedUser = localStorage.getItem('dawami_user');
+    if (savedUser) {
+      currentEmployee = JSON.parse(savedUser);
+      const employees = getEmployees();
+      const updated = employees.find(e => e.code === currentEmployee.code);
+      if (updated) currentEmployee = updated;
+      showDashboard();
+    } else {
+      showLogin();
+    }
+  }
+
+  const adminTable = document.getElementById('employeeTableBody');
+  if (adminTable) {
+    loadAdminData();
+  }
+});
+
+function loginWithCode() {
+  const inputEl = document.getElementById('employeeCodeInput');
+  const errorEl = document.getElementById('loginError');
+  if (!inputEl) return;
+  
+  const code = inputEl.value.trim();
+  const employees = getEmployees();
+  const employee = employees.find(emp => emp.code === code);
+
+  if (employee) {
+    currentEmployee = employee;
+    localStorage.setItem('dawami_user', JSON.stringify(employee));
+    if (errorEl) errorEl.style.display = 'none';
+    showDashboard();
+  } else {
+    if (errorEl) {
+      errorEl.style.display = 'block';
+      errorEl.innerText = "الكود غير صحيح، يرجى المحاولة مجدداً.";
+    }
+  }
+}
+
+function logout() {
+  localStorage.removeItem('dawami_user');
+  currentEmployee = null;
+  showLogin();
+}
+
+function showDashboard() {
+  const loginSec = document.getElementById('loginSection');
+  const dashSec = document.getElementById('dashboardSection');
+  if (loginSec) loginSec.style.display = 'none';
+  if (dashSec) dashSec.style.display = 'block';
+
+  if (currentEmployee) {
+    const nameEl = document.getElementById('employeeName');
+    const codeEl = document.getElementById('employeeCodeDisplay');
+    if (nameEl) nameEl.innerText = currentEmployee.name;
+    if (codeEl) codeEl.innerText = currentEmployee.code;
+  }
+}
+
+function showLogin() {
+  const loginSec = document.getElementById('loginSection');
+  const dashSec = document.getElementById('dashboardSection');
+  if (loginSec) loginSec.style.display = 'block';
+  if (dashSec) dashSec.style.display = 'none';
+}
+
+function toggleBreak() {
+  const breakBtn = document.getElementById('breakBtn');
+  const currentStatus = document.getElementById('currentStatus');
+  const breakLog = document.getElementById('breakLog');
+  if (!currentEmployee) return;
+
+  const now = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+  isOnBreak = !isOnBreak;
+  let employees = getEmployees();
+  const empIndex = employees.findIndex(e => e.code === currentEmployee.code);
+
+  if (isOnBreak) {
+    if (breakBtn) {
+      breakBtn.innerText = "إنهاء الاستراحة";
+      breakBtn.classList.add('active');
+    }
+    if (currentStatus) {
+      currentStatus.innerText = "في استراحة";
+      currentStatus.style.color = "#d97706";
+    }
+    if (breakLog) breakLog.innerText = `بدأت الاستراحة الساعة: ${now}`;
+    if (empIndex !== -1) employees[empIndex].status = "في استراحة";
+  } else {
+    if (breakBtn) {
+      breakBtn.innerText = "بدء الاستراحة (Break)";
+      breakBtn.classList.remove('active');
+    }
+    if (currentStatus) {
+      currentStatus.innerText = "على رأس العمل";
+      currentStatus.style.color = "#10b981";
+    }
+    if (breakLog) breakLog.innerText = `انتهت الاستراحة الساعة: ${now}`;
+    if (empIndex !== -1) employees[empIndex].status = "على رأس العمل";
+  }
+
+  saveEmployeesData(employees);
+}
+
 function loadAdminData() {
   const tableBody = document.getElementById('employeeTableBody');
   if (!tableBody) return;
@@ -94,12 +202,12 @@ function loadAdminData() {
         <td>${index + 1}</td>
         <td><strong>${emp.name}</strong></td>
         <td><code>${emp.code}</code></td>
-        <td>${emp.nationalId}</td>
-        <td>${emp.phone}</td>
-        <td>${emp.salary}</td>
-        <td>${emp.rate}</td>
-        <td><span class="status-badge ${statusClass}">${emp.status}</span></td>
-        <td>${emp.breakTime}</td>
+        <td>${emp.nationalId || '-'}</td>
+        <td>${emp.phone || '-'}</td>
+        <td>${emp.salary || '0'}</td>
+        <td>${emp.rate || '0.00'}</td>
+        <td><span class="status-badge ${statusClass}">${emp.status || 'على رأس العمل'}</span></td>
+        <td>${emp.breakTime || '0 دقيقة'}</td>
         <td class="no-print">
           <button class="btn btn-edit" onclick="openEditModal('${emp.code}')">تعديل</button>
         </td>
@@ -109,7 +217,6 @@ function loadAdminData() {
   });
 }
 
-// فتح نافذة التعديل وملاءة البيانات
 function openEditModal(code) {
   const employees = getEmployees();
   const emp = employees.find(e => e.code === code);
@@ -117,19 +224,20 @@ function openEditModal(code) {
 
   document.getElementById('editCode').value = emp.code;
   document.getElementById('editName').value = emp.name;
-  document.getElementById('editNationalId').value = emp.nationalId;
-  document.getElementById('editPhone').value = emp.phone;
-  document.getElementById('editSalary').value = emp.salary;
-  document.getElementById('editRate').value = emp.rate;
+  document.getElementById('editNationalId').value = emp.nationalId || '';
+  document.getElementById('editPhone').value = emp.phone || '';
+  document.getElementById('editSalary').value = emp.salary || '';
+  document.getElementById('editRate').value = emp.rate || '';
 
-  document.getElementById('editModal').style.display = 'flex';
+  const modal = document.getElementById('editModal');
+  if (modal) modal.style.display = 'flex';
 }
 
 function closeEditModal() {
-  document.getElementById('editModal').style.display = 'none';
+  const modal = document.getElementById('editModal');
+  if (modal) modal.style.display = 'none';
 }
 
-// حفظ تعديلات المدير
 function saveEmployeeChanges() {
   const code = document.getElementById('editCode').value;
   let employees = getEmployees();
