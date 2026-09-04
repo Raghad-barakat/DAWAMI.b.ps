@@ -2,112 +2,180 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تسجيل الدخول</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - DAWAMIbps</title>
+
     <style>
-        body {
-            font-family: Arial;
-            background: #f0f2f5;
-            text-align: center;
-            padding-top: 80px;
-        }
-
-        .box {
-            background: white;
-            width: 330px;
-            margin: auto;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px #bbb;
-        }
-
-        input, button {
-            width: 90%;
-            padding: 12px;
-            margin: 8px;
+        * {
             box-sizing: border-box;
         }
 
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 50px 15px;
         }
 
-        #employeeFields {
-            display: none;
+        .login-box {
+            background: white;
+            max-width: 390px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+
+        select,
+        input,
+        button {
+            width: 100%;
+            padding: 13px;
+            margin: 8px 0;
+            border-radius: 7px;
+            font-size: 16px;
+        }
+
+        input,
+        select {
+            border: 1px solid #ccc;
+        }
+
+        button {
+            border: none;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        #message {
+            color: #c0392b;
+            min-height: 22px;
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 15px;
         }
     </style>
 </head>
+
 <body>
 
-<div class="box">
-    <h2>تسجيل الدخول</h2>
+<div class="login-box">
+    <div class="logo">DAWAMIbps</div>
+
+    <h1>تسجيل الدخول</h1>
 
     <select id="loginType">
-        <option value="employee">موظف</option>
-        <option value="admin">مدير</option>
+        <option value="employee">دخول موظف</option>
+        <option value="admin">دخول مدير</option>
     </select>
 
-    <input type="email" id="email" placeholder="إيميل المدير">
-    <input type="password" id="password" placeholder="كلمة السر">
-
     <div id="employeeFields">
-        <input type="text" id="employeeCode" placeholder="كود الموظف">
+        <input
+            type="text"
+            id="employeeCode"
+            placeholder="أدخل كود الموظف"
+        >
+    </div>
+
+    <div id="adminFields" style="display:none;">
+        <input
+            type="email"
+            id="adminEmail"
+            placeholder="إيميل المدير"
+        >
+
+        <input
+            type="password"
+            id="adminPassword"
+            placeholder="كلمة سر المدير"
+        >
     </div>
 
     <button id="loginBtn">دخول</button>
+
     <p id="message"></p>
 </div>
 
 <script type="module">
-    import { db } from './firebase-config.js';
+    import { db, auth } from "./firebase-config.js";
 
     import {
         collection,
-        getDocs,
         query,
-        where
+        where,
+        getDocs
     } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
+    import {
+        signInWithEmailAndPassword
+    } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+
     const loginType = document.getElementById("loginType");
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
     const employeeFields = document.getElementById("employeeFields");
+    const adminFields = document.getElementById("adminFields");
     const message = document.getElementById("message");
 
-    loginType.onchange = () => {
-        const isEmployee = loginType.value === "employee";
+    loginType.addEventListener("change", () => {
+        if (loginType.value === "admin") {
+            employeeFields.style.display = "none";
+            adminFields.style.display = "block";
+        } else {
+            employeeFields.style.display = "block";
+            adminFields.style.display = "none";
+        }
 
-        employeeFields.style.display = isEmployee ? "block" : "none";
-        emailInput.style.display = isEmployee ? "none" : "block";
-        passwordInput.style.display = isEmployee ? "none" : "block";
-    };
+        message.innerText = "";
+    });
 
-    loginType.dispatchEvent(new Event("change"));
-
-    document.getElementById("loginBtn").onclick = async () => {
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+        message.style.color = "#c0392b";
         message.innerText = "جارٍ التحقق...";
 
-        if (loginType.value === "admin") {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-
-            // هذه مؤقتة فقط، والأفضل استخدام Firebase Authentication
-            if (
-                email === "admin@example.com" &&
-                password === "123456"
-            ) {
-                sessionStorage.setItem("role", "admin");
-                window.location.href = "admin.html";
+        try {
+            if (loginType.value === "admin") {
+                await loginAdmin();
             } else {
-                message.innerText = "بيانات المدير غير صحيحة";
+                await loginEmployee();
             }
+        } catch (error) {
+            console.error(error);
+            message.innerText = "حدث خطأ أثناء تسجيل الدخول";
+        }
+    });
 
+    async function loginAdmin() {
+        const email = document.getElementById("adminEmail").value.trim();
+        const password = document.getElementById("adminPassword").value;
+
+        if (!email || !password) {
+            message.innerText = "أدخل إيميل المدير وكلمة السر";
             return;
         }
 
+        await signInWithEmailAndPassword(auth, email, password);
+
+        sessionStorage.setItem("role", "admin");
+
+        window.location.href = "admin.html";
+    }
+
+    async function loginEmployee() {
         const code = document.getElementById("employeeCode").value.trim();
 
         if (!code) {
@@ -125,17 +193,17 @@
         const result = await getDocs(employeeQuery);
 
         if (result.empty) {
-            message.innerText = "كود الموظف غير صحيح";
+            message.innerText = "كود الموظف غير صحيح أو الحساب غير فعال";
             return;
         }
 
-        const employee = result.docs[0];
+        const employeeDoc = result.docs[0];
 
         sessionStorage.setItem("role", "employee");
-        sessionStorage.setItem("employeeId", employee.id);
+        sessionStorage.setItem("employeeId", employeeDoc.id);
 
         window.location.href = "employee.html";
-    };
+    }
 </script>
 
 </body>
