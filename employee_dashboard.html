@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة الدوام | DAWAMIbps</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f4f7f6; padding-top: 50px; }
+        .action-card { background: white; width: 320px; margin: 0 auto; padding: 30px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-in { background: #2ecc71; } .btn-out { background: #e74c3c; } .btn-break { background: #f1c40f; color: black; }
+        .info-section { margin-top: 30px; background: white; display: inline-block; padding: 20px; border-radius: 10px; text-align: right; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="action-card">
+        <h2>تسجيل الحضور</h2>
+        <button class="btn btn-in" onclick="handleAction('checkIn')">تسجيل دخول 🟢</button>
+        <button class="btn btn-break" onclick="handleAction('break')">استراحة ☕</button>
+        <button class="btn btn-out" onclick="handleAction('checkOut')">تسجيل خروج 🔴</button>
+    </div>
+
+    <div class="info-section">
+        <h3>بياناتي الشخصية:</h3>
+        <p><strong>الاسم:</strong> <span id="dispName">جاري التحميل...</span></p>
+        <p><strong>الوظيفة:</strong> <span id="dispJob">...</span></p>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { doc, getDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+        const userId = "USER_ID_FROM_QR";
+
+        // جلب البيانات الشخصية
+        const userSnap = await getDoc(doc(db, "users", userId));
+        if(userSnap.exists()) {
+            document.getElementById('dispName').innerText = userSnap.data().fullName;
+            document.getElementById('dispJob').innerText = userSnap.data().jobTitle;
+        }
+
+        window.handleAction = async (type) => {
+            // جلب إعدادات الموقع من فايربيس
+            const settingsSnap = await getDoc(doc(db, "settings", "company"));
+            const { lat, lng, radius } = settingsSnap.data();
+
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, lat, lng);
+                if (dist <= radius) {
+                    await addDoc(collection(db, "attendance"), {
+                        userId: userId,
+                        type: type,
+                        timestamp: new Date(),
+                        date: new Date().toLocaleDateString()
+                    });
+                    alert(`تم تسجيل ${type} بنجاح!`);
+                } else {
+                    alert("أنت خارج نطاق الشركة!");
+                }
+            });
+        };
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+    </script>
+</body>
+</html>
