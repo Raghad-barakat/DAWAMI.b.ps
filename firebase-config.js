@@ -1,5 +1,3 @@
-// firebase-config.js
-
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
 
@@ -10,12 +8,12 @@ import { getAuth } from
 "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "ضع_API_KEY_هنا",
-    authDomain: "ضع_AUTH_DOMAIN_هنا",
-    projectId: "ضع_PROJECT_ID_هنا",
-    storageBucket: "ضع_STORAGE_BUCKET_هنا",
-    messagingSenderId: "ضع_MESSAGING_SENDER_ID_هنا",
-    appId: "ضع_APP_ID_هنا"
+    apiKey: "AIzaSyCqERoBlSxpk_FTVTepbyTQd6C2aT9vNts",
+    authDomain: "dawamibps.firebaseapp.com",
+    projectId: "dawamibps",
+    storageBucket: "dawamibps.firebasestorage.app",
+    messagingSenderId: "949392669004",
+    appId: "1:949392669004:web:89b8c65e631662c6d2b7e9"
 };
 
 const app = initializeApp(firebaseConfig);
