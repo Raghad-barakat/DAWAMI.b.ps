@@ -2,65 +2,273 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة الدوام | DAWAMIbps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>لوحة الموظف - DAWAMIbps</title>
+
     <style>
-        body { font-family: Arial; text-align: center; background: #f4f7f6; padding-top: 50px; }
-        .action-card { background: white; width: 320px; margin: 0 auto; padding: 30px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; color: white; font-weight: bold; }
-        .btn-in { background: #2ecc71; } .btn-out { background: #e74c3c; } .btn-break { background: #f1c40f; color: black; }
-        .info-section { margin-top: 30px; background: white; display: inline-block; padding: 20px; border-radius: 10px; text-align: right; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f7f6;
+            padding: 35px 15px;
+            margin: 0;
+        }
+
+        .top-bar {
+            max-width: 500px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .top-bar h2 {
+            color: #2c3e50;
+        }
+
+        .logout {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .action-card {
+            background: white;
+            max-width: 400px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn-in {
+            background: #2ecc71;
+        }
+
+        .btn-out {
+            background: #e74c3c;
+        }
+
+        .btn-break {
+            background: #f1c40f;
+            color: black;
+        }
+
+        .info-section {
+            max-width: 400px;
+            margin: 25px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: right;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .info-section span {
+            color: #2980b9;
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body>
-    <div class="action-card">
-        <h2>تسجيل الحضور</h2>
-        <button class="btn btn-in" onclick="handleAction('checkIn')">تسجيل دخول 🟢</button>
-        <button class="btn btn-break" onclick="handleAction('break')">استراحة ☕</button>
-        <button class="btn btn-out" onclick="handleAction('checkOut')">تسجيل خروج 🔴</button>
-    </div>
-    <div class="info-section">
-        <h3>بياناتي:</h3>
-        <p><strong>الاسم:</strong> <span id="dispName">...</span></p>
-        <p><strong>الوظيفة:</strong> <span id="dispJob">...</span></p>
-    </div>
-    <script type="module">
-        import { db } from './firebase-config.js';
-        import { doc, getDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('id') || 'temp_user';
+<div class="top-bar">
+    <h2>لوحة الموظف</h2>
+    <button class="logout" onclick="logout()">خروج</button>
+</div>
 
-        const userSnap = await getDoc(doc(db, "users", userId));
-        if(userSnap.exists()) {
-            document.getElementById('dispName').innerText = userSnap.data().fullName;
-            document.getElementById('dispJob').innerText = userSnap.data().jobTitle;
-        }
+<div class="action-card">
+    <h2>تسجيل الحضور</h2>
 
-        window.handleAction = async (type) => {
-            const settingsSnap = await getDoc(doc(db, "settings", "company"));
-            if(!settingsSnap.exists()) return alert("المدير لم يحدد موقع الشركة بعد!");
-            const { lat, lng, radius } = settingsSnap.data();
+    <button class="btn btn-in" onclick="handleAction('checkIn')">
+        تسجيل دخول 🟢
+    </button>
 
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, lat, lng);
-                if (dist <= radius) {
+    <button class="btn btn-break" onclick="handleAction('break')">
+        استراحة ☕
+    </button>
+
+    <button class="btn btn-out" onclick="handleAction('checkOut')">
+        تسجيل خروج 🔴
+    </button>
+</div>
+
+<div class="info-section">
+    <h3>بياناتي</h3>
+
+    <p>
+        <strong>الاسم:</strong>
+        <span id="dispName">...</span>
+    </p>
+
+    <p>
+        <strong>الوظيفة:</strong>
+        <span id="dispJob">...</span>
+    </p>
+
+    <p>
+        <strong>الإيميل:</strong>
+        <span id="dispEmail">...</span>
+    </p>
+</div>
+
+<script type="module">
+    import { db } from "./firebase-config.js";
+
+    import {
+        doc,
+        getDoc,
+        addDoc,
+        collection,
+        serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+    const role = sessionStorage.getItem("role");
+    const userId = sessionStorage.getItem("employeeId");
+
+    if (role !== "employee" || !userId) {
+        window.location.href = "login.html";
+    }
+
+    const userSnap = await getDoc(
+        doc(db, "users", userId)
+    );
+
+    if (!userSnap.exists()) {
+        alert("لم يتم العثور على بيانات الموظف");
+        sessionStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    const user = userSnap.data();
+
+    if (!user.active) {
+        alert("هذا الحساب موقوف");
+        sessionStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    document.getElementById("dispName").innerText =
+        user.fullName || "";
+
+    document.getElementById("dispJob").innerText =
+        user.jobTitle || "";
+
+    document.getElementById("dispEmail").innerText =
+        user.email || "";
+
+    window.handleAction = async function(type) {
+        try {
+            const settingsSnap = await getDoc(
+                doc(db, "settings", "company")
+            );
+
+            if (!settingsSnap.exists()) {
+                alert("المدير لم يحدد موقع الشركة بعد");
+                return;
+            }
+
+            const settings = settingsSnap.data();
+
+            navigator.geolocation.getCurrentPosition(
+                async position => {
+                    const currentLat = position.coords.latitude;
+                    const currentLng = position.coords.longitude;
+
+                    const distance = calculateDistance(
+                        currentLat,
+                        currentLng,
+                        settings.lat,
+                        settings.lng
+                    );
+
+                    if (distance > settings.radius) {
+                        alert(
+                            `أنت بعيد عن الشركة. المسافة: ${Math.round(distance)} متر`
+                        );
+                        return;
+                    }
+
                     await addDoc(collection(db, "attendance"), {
-                        userId: userId, type: type, timestamp: new Date(), date: new Date().toLocaleDateString()
+                        userId: userId,
+                        type: type,
+                        date: new Date().toLocaleDateString("ar"),
+                        timestamp: serverTimestamp()
                     });
-                    alert(`تم تسجيل ${type} بنجاح!`);
-                } else {
-                    alert(`أنت بعيد عن الشركة! المسافة الحالية: ${Math.round(dist)} متر.`);
-                }
-            }, () => alert("يرجى تفعيل خدمة الموقع (GPS)"));
-        };
 
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    alert(`تم تسجيل ${getActionName(type)} بنجاح`);
+                },
+                () => {
+                    alert("يرجى تفعيل خدمة الموقع GPS");
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+
+        } catch (error) {
+            console.error(error);
+            alert("حدث خطأ أثناء تسجيل الحضور");
         }
-    </script>
+    };
+
+    window.logout = function() {
+        sessionStorage.clear();
+        window.location.href = "login.html";
+    };
+
+    function getActionName(type) {
+        if (type === "checkIn") return "الدخول";
+        if (type === "break") return "الاستراحة";
+        if (type === "checkOut") return "الخروج";
+        return type;
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+
+        const phi1 = lat1 * Math.PI / 180;
+        const phi2 = lat2 * Math.PI / 180;
+
+        const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+        const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+        const a =
+            Math.sin(deltaPhi / 2) ** 2 +
+            Math.cos(phi1) *
+            Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) ** 2;
+
+        return R * 2 * Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1 - a)
+        );
+    }
+</script>
+
 </body>
 </html>
