@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>لوحة الدوام | DAWAMIbps</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f4f7f6; padding-top: 50px; }
+        body { font-family: Arial; text-align: center; background: #f4f7f6; padding-top: 50px; }
         .action-card { background: white; width: 320px; margin: 0 auto; padding: 30px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .btn { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; color: white; font-weight: bold; }
         .btn-in { background: #2ecc71; } .btn-out { background: #e74c3c; } .btn-break { background: #f1c40f; color: black; }
@@ -18,20 +18,18 @@
         <button class="btn btn-break" onclick="handleAction('break')">استراحة ☕</button>
         <button class="btn btn-out" onclick="handleAction('checkOut')">تسجيل خروج 🔴</button>
     </div>
-
     <div class="info-section">
-        <h3>بياناتي الشخصية:</h3>
-        <p><strong>الاسم:</strong> <span id="dispName">جاري التحميل...</span></p>
+        <h3>بياناتي:</h3>
+        <p><strong>الاسم:</strong> <span id="dispName">...</span></p>
         <p><strong>الوظيفة:</strong> <span id="dispJob">...</span></p>
     </div>
-
     <script type="module">
         import { db } from './firebase-config.js';
         import { doc, getDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
-        const userId = "USER_ID_FROM_QR";
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('id') || 'temp_user';
 
-        // جلب البيانات الشخصية
         const userSnap = await getDoc(doc(db, "users", userId));
         if(userSnap.exists()) {
             document.getElementById('dispName').innerText = userSnap.data().fullName;
@@ -39,24 +37,21 @@
         }
 
         window.handleAction = async (type) => {
-            // جلب إعدادات الموقع من فايربيس
             const settingsSnap = await getDoc(doc(db, "settings", "company"));
+            if(!settingsSnap.exists()) return alert("المدير لم يحدد موقع الشركة بعد!");
             const { lat, lng, radius } = settingsSnap.data();
 
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, lat, lng);
                 if (dist <= radius) {
                     await addDoc(collection(db, "attendance"), {
-                        userId: userId,
-                        type: type,
-                        timestamp: new Date(),
-                        date: new Date().toLocaleDateString()
+                        userId: userId, type: type, timestamp: new Date(), date: new Date().toLocaleDateString()
                     });
                     alert(`تم تسجيل ${type} بنجاح!`);
                 } else {
-                    alert("أنت خارج نطاق الشركة!");
+                    alert(`أنت بعيد عن الشركة! المسافة الحالية: ${Math.round(dist)} متر.`);
                 }
-            });
+            }, () => alert("يرجى تفعيل خدمة الموقع (GPS)"));
         };
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
