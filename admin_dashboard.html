@@ -2,70 +2,569 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>إدارة DAWAMIbps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>لوحة المدير - DAWAMIbps</title>
+
     <style>
-        body { font-family: Arial; margin: 0; background: #f0f2f5; display: flex; }
-        .sidebar { width: 250px; background: #2c3e50; color: white; height: 100vh; padding: 20px; }
-        .main-content { flex: 1; padding: 20px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .section { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }
-        button { padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; color: white; font-weight: bold; }
-        .btn-save { background: #27ae60; } .btn-add { background: #3498db; } .btn-alert { background: #e67e22; }
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f0f2f5;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            margin-top: 0;
+            color: #ecf0f1;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            margin: 8px 0;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background: #34495e;
+        }
+
+        .sidebar button:hover {
+            background: #3498db;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 25px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card,
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card {
+            text-align: center;
+        }
+
+        .stat-card p {
+            font-size: 28px;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        input,
+        button {
+            padding: 11px;
+            margin: 5px;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        input {
+            border: 1px solid #ccc;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn-save {
+            background: #27ae60;
+        }
+
+        .btn-add {
+            background: #3498db;
+        }
+
+        .btn-alert {
+            background: #e67e22;
+        }
+
+        .btn-report {
+            background: #8e44ad;
+        }
+
+        .btn-delete {
+            background: #c0392b;
+        }
+
+        .btn-logout {
+            background: #e74c3c !important;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #34495e;
+            color: white;
+        }
+
+        @media (max-width: 800px) {
+            body {
+                display: block;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            input {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
     </style>
 </head>
+
 <body>
-    <div class="sidebar"><h2>DAWAMIbps Admin</h2><p>الرئيسية</p><p>الموظفين</p></div>
-    <div class="main-content">
+
+<div class="sidebar">
+    <h2>DAWAMIbps</h2>
+
+    <button onclick="showSection('homeSection')">
+        الرئيسية
+    </button>
+
+    <button onclick="showSection('employeesSection')">
+        الموظفين
+    </button>
+
+    <button onclick="showSection('reportsSection')">
+        📊 التقارير
+    </button>
+
+    <button class="btn-logout" onclick="logout()">
+        تسجيل الخروج
+    </button>
+</div>
+
+<div class="main-content">
+
+    <section id="homeSection">
         <h1>لوحة تحكم المدير</h1>
+
         <div class="stats-grid">
-            <div class="stat-card"><h3>الحاضرون اليوم</h3><p id="present">0</p></div>
-            <div class="stat-card"><h3>نسوا تسجيل الخروج</h3><p id="forgot">0</p></div>
-            <div class="stat-card"><h3>إجمالي الموظفين</h3><p id="total">0</p></div>
+            <div class="stat-card">
+                <h3>الحاضرون اليوم</h3>
+                <p id="present">0</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>نسوا تسجيل الخروج</h3>
+                <p id="forgot">0</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>إجمالي الموظفين</h3>
+                <p id="total">0</p>
+            </div>
         </div>
+
         <div class="section">
             <h3>📍 إعدادات موقع الشركة</h3>
-            <input type="text" id="lat" placeholder="Latitude">
-            <input type="text" id="lng" placeholder="Longitude">
+
+            <input type="number" id="lat" placeholder="Latitude">
+            <input type="number" id="lng" placeholder="Longitude">
             <input type="number" id="radius" placeholder="النطاق بالمتر">
-            <button class="btn-save" id="saveLoc">حفظ الموقع</button>
+
+            <button class="btn-save" id="saveLoc">
+                حفظ الموقع
+            </button>
         </div>
-        <div class="section">
-            <h3>👤 إضافة موظف جديد</h3>
-            <input type="text" id="newEmpName" placeholder="الاسم">
-            <input type="email" id="newEmpEmail" placeholder="الايميل">
-            <button class="btn-add" id="addEmp">إضافة</button>
-        </div>
+
         <div class="section">
             <h3>🔔 التنبيهات</h3>
-            <button class="btn-alert" id="sendRemind">إرسال تذكير للمنسيين</button>
+
+            <button class="btn-alert" id="sendRemind">
+                إرسال تذكير للمنسيين
+            </button>
         </div>
-    </div>
-    <script type="module">
-        import { db } from './firebase-config.js';
-        import { doc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+    </section>
 
-        document.getElementById('saveLoc').onclick = async () => {
-            await setDoc(doc(db, "settings", "company"), {
-                lat: parseFloat(document.getElementById('lat').value),
-                lng: parseFloat(document.getElementById('lng').value),
-                radius: parseInt(document.getElementById('radius').value)
+    <section id="employeesSection" style="display:none;">
+        <h1>إدارة الموظفين</h1>
+
+        <div class="section">
+            <h3>👤 إضافة موظف جديد</h3>
+
+            <input type="text" id="newEmpName" placeholder="اسم الموظف">
+            <input type="email" id="newEmpEmail" placeholder="إيميل الموظف">
+            <input type="text" id="newEmpJob" placeholder="الوظيفة">
+            <input type="text" id="newEmpCode" placeholder="كود الموظف">
+
+            <button class="btn-add" id="addEmp">
+                إضافة الموظف
+            </button>
+        </div>
+
+        <div class="section">
+            <h3>قائمة الموظفين</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>الاسم</th>
+                        <th>الإيميل</th>
+                        <th>الوظيفة</th>
+                        <th>الكود</th>
+                        <th>الحالة</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+
+                <tbody id="employeesTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="reportsSection" style="display:none;">
+        <h1>📊 التقارير</h1>
+
+        <div class="section">
+            <button class="btn-report" id="loadReports">
+                عرض تقرير الحضور
+            </button>
+
+            <button class="btn-report" id="downloadReport">
+                تنزيل التقرير
+            </button>
+
+            <div id="reportsResult"></div>
+        </div>
+    </section>
+
+</div>
+
+<script type="module">
+    import { db, auth } from "./firebase-config.js";
+
+    import {
+        collection,
+        getDocs,
+        getDoc,
+        doc,
+        setDoc,
+        addDoc,
+        updateDoc,
+        query,
+        orderBy,
+        serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+    import {
+        signOut
+    } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+
+    const role = sessionStorage.getItem("role");
+
+    if (role !== "admin") {
+        window.location.href = "login.html";
+    }
+
+    window.showSection = function(sectionId) {
+        document.getElementById("homeSection").style.display = "none";
+        document.getElementById("employeesSection").style.display = "none";
+        document.getElementById("reportsSection").style.display = "none";
+
+        document.getElementById(sectionId).style.display = "block";
+
+        if (sectionId === "employeesSection") {
+            loadEmployees();
+        }
+
+        if (sectionId === "reportsSection") {
+            loadReports();
+        }
+    };
+
+    window.logout = async function() {
+        await signOut(auth);
+
+        sessionStorage.clear();
+
+        window.location.href = "login.html";
+    };
+
+    document.getElementById("saveLoc").addEventListener("click", async () => {
+        const lat = parseFloat(document.getElementById("lat").value);
+        const lng = parseFloat(document.getElementById("lng").value);
+        const radius = parseInt(document.getElementById("radius").value);
+
+        if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
+            alert("أدخل إحداثيات الموقع والنطاق بشكل صحيح");
+            return;
+        }
+
+        await setDoc(doc(db, "settings", "company"), {
+            lat,
+            lng,
+            radius,
+            updatedAt: serverTimestamp()
+        });
+
+        alert("تم حفظ موقع الشركة");
+    });
+
+    document.getElementById("addEmp").addEventListener("click", async () => {
+        const name = document.getElementById("newEmpName").value.trim();
+        const email = document.getElementById("newEmpEmail").value.trim();
+        const job = document.getElementById("newEmpJob").value.trim();
+        const code = document.getElementById("newEmpCode").value.trim();
+
+        if (!name || !email || !code) {
+            alert("الاسم والإيميل والكود حقول مطلوبة");
+            return;
+        }
+
+        const employeeId = "EMP_" + Date.now();
+
+        await setDoc(doc(db, "users", employeeId), {
+            fullName: name,
+            email: email,
+            jobTitle: job,
+            employeeCode: code,
+            role: "employee",
+            active: true,
+            createdAt: serverTimestamp()
+        });
+
+        alert("تمت إضافة الموظف بنجاح");
+
+        document.getElementById("newEmpName").value = "";
+        document.getElementById("newEmpEmail").value = "";
+        document.getElementById("newEmpJob").value = "";
+        document.getElementById("newEmpCode").value = "";
+
+        loadEmployees();
+    });
+
+    async function loadEmployees() {
+        const table = document.getElementById("employeesTable");
+        table.innerHTML = "<tr><td colspan='6'>جارٍ التحميل...</td></tr>";
+
+        const result = await getDocs(collection(db, "users"));
+
+        table.innerHTML = "";
+        let totalEmployees = 0;
+
+        result.forEach(employeeDoc => {
+            const employee = employeeDoc.data();
+
+            if (employee.role !== "employee") {
+                return;
+            }
+
+            totalEmployees++;
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${escapeHtml(employee.fullName || "")}</td>
+                <td>${escapeHtml(employee.email || "")}</td>
+                <td>${escapeHtml(employee.jobTitle || "")}</td>
+                <td>${escapeHtml(employee.employeeCode || "")}</td>
+                <td>${employee.active ? "فعال" : "موقوف"}</td>
+                <td>
+                    <button class="btn-delete">
+                        ${employee.active ? "إيقاف" : "تفعيل"}
+                    </button>
+                </td>
+            `;
+
+            row.querySelector("button").addEventListener("click", async () => {
+                await updateDoc(doc(db, "users", employeeDoc.id), {
+                    active: !employee.active
+                });
+
+                loadEmployees();
             });
-            alert("تم حفظ موقع الشركة!");
-        };
 
-        document.getElementById('addEmp').onclick = async () => {
-            const id = "EMP_" + Date.now();
-            await setDoc(doc(db, "users", id), {
-                fullName: document.getElementById('newEmpName').value,
-                email: document.getElementById('newEmpEmail').value,
-                role: 'employee'
-            });
-            alert("تم إضافة الموظف!");
-        };
+            table.appendChild(row);
+        });
 
-        document.getElementById('sendRemind').onclick = () => alert("تم إرسال الإشعارات!");
-    </script>
+        document.getElementById("total").innerText = totalEmployees;
+    }
+
+    async function loadReports() {
+        const reportsResult = document.getElementById("reportsResult");
+
+        reportsResult.innerHTML = "جارٍ تحميل التقارير...";
+
+        const attendanceResult = await getDocs(
+            collection(db, "attendance")
+        );
+
+        const usersResult = await getDocs(
+            collection(db, "users")
+        );
+
+        const users = {};
+
+        usersResult.forEach(userDoc => {
+            users[userDoc.id] = userDoc.data();
+        });
+
+        let html = `
+            <table id="reportTable">
+                <thead>
+                    <tr>
+                        <th>الموظف</th>
+                        <th>النوع</th>
+                        <th>التاريخ</th>
+                        <th>الوقت</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        let presentToday = 0;
+
+        attendanceResult.forEach(attendanceDoc => {
+            const attendance = attendanceDoc.data();
+            const employee = users[attendance.userId];
+
+            if (!employee) {
+                return;
+            }
+
+            let timestamp = "";
+
+            if (attendance.timestamp?.toDate) {
+                timestamp = attendance.timestamp.toDate().toLocaleString("ar");
+            } else {
+                timestamp = "غير معروف";
+            }
+
+            html += `
+                <tr>
+                    <td>${escapeHtml(employee.fullName || "")}</td>
+                    <td>${getActionName(attendance.type)}</td>
+                    <td>${escapeHtml(attendance.date || "")}</td>
+                    <td>${escapeHtml(timestamp)}</td>
+                </tr>
+            `;
+
+            if (attendance.type === "checkIn") {
+                presentToday++;
+            }
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        reportsResult.innerHTML = html;
+
+        document.getElementById("present").innerText = presentToday;
+    }
+
+    function getActionName(type) {
+        if (type === "checkIn") return "تسجيل دخول";
+        if (type === "break") return "استراحة";
+        if (type === "checkOut") return "تسجيل خروج";
+        return type;
+    }
+
+    document.getElementById("loadReports").addEventListener("click", loadReports);
+
+    document.getElementById("downloadReport").addEventListener("click", () => {
+        const table = document.getElementById("reportTable");
+
+        if (!table) {
+            alert("اعرض التقرير أولاً");
+            return;
+        }
+
+        let csv = "";
+
+        table.querySelectorAll("tr").forEach(row => {
+            const columns = [...row.querySelectorAll("th, td")];
+
+            csv += columns
+                .map(column => `"${column.innerText.replaceAll('"', '""')}"`)
+                .join(",") + "\n";
+        });
+
+        const blob = new Blob(
+            ["\ufeff" + csv],
+            { type: "text/csv;charset=utf-8;" }
+        );
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "attendance-report.csv";
+        link.click();
+
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("sendRemind").addEventListener("click", () => {
+        alert("تم تجهيز التنبيهات للموظفين الذين لم يسجلوا الخروج");
+    });
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    loadEmployees();
+</script>
+
 </body>
 </html>
