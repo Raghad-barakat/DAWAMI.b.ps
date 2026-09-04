@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تسجيل الدخول</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f0f2f5;
+            text-align: center;
+            padding-top: 80px;
+        }
+
+        .box {
+            background: white;
+            width: 330px;
+            margin: auto;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #bbb;
+        }
+
+        input, button {
+            width: 90%;
+            padding: 12px;
+            margin: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #employeeFields {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>تسجيل الدخول</h2>
+
+    <select id="loginType">
+        <option value="employee">موظف</option>
+        <option value="admin">مدير</option>
+    </select>
+
+    <input type="email" id="email" placeholder="إيميل المدير">
+    <input type="password" id="password" placeholder="كلمة السر">
+
+    <div id="employeeFields">
+        <input type="text" id="employeeCode" placeholder="كود الموظف">
+    </div>
+
+    <button id="loginBtn">دخول</button>
+    <p id="message"></p>
+</div>
+
+<script type="module">
+    import { db } from './firebase-config.js';
+
+    import {
+        collection,
+        getDocs,
+        query,
+        where
+    } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+    const loginType = document.getElementById("loginType");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const employeeFields = document.getElementById("employeeFields");
+    const message = document.getElementById("message");
+
+    loginType.onchange = () => {
+        const isEmployee = loginType.value === "employee";
+
+        employeeFields.style.display = isEmployee ? "block" : "none";
+        emailInput.style.display = isEmployee ? "none" : "block";
+        passwordInput.style.display = isEmployee ? "none" : "block";
+    };
+
+    loginType.dispatchEvent(new Event("change"));
+
+    document.getElementById("loginBtn").onclick = async () => {
+        message.innerText = "جارٍ التحقق...";
+
+        if (loginType.value === "admin") {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            // هذه مؤقتة فقط، والأفضل استخدام Firebase Authentication
+            if (
+                email === "admin@example.com" &&
+                password === "123456"
+            ) {
+                sessionStorage.setItem("role", "admin");
+                window.location.href = "admin.html";
+            } else {
+                message.innerText = "بيانات المدير غير صحيحة";
+            }
+
+            return;
+        }
+
+        const code = document.getElementById("employeeCode").value.trim();
+
+        if (!code) {
+            message.innerText = "أدخل كود الموظف";
+            return;
+        }
+
+        const employeeQuery = query(
+            collection(db, "users"),
+            where("employeeCode", "==", code),
+            where("role", "==", "employee"),
+            where("active", "==", true)
+        );
+
+        const result = await getDocs(employeeQuery);
+
+        if (result.empty) {
+            message.innerText = "كود الموظف غير صحيح";
+            return;
+        }
+
+        const employee = result.docs[0];
+
+        sessionStorage.setItem("role", "employee");
+        sessionStorage.setItem("employeeId", employee.id);
+
+        window.location.href = "employee.html";
+    };
+</script>
+
+</body>
+</html>
